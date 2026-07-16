@@ -1,0 +1,8 @@
+{
+  "name": "Remix: E-Sangu Santri vw2",
+  "description": "Aplikasi Manajemen Tabungan Santri \u0026 Penitipan Uang (E-Sangu) dilengkapi Portal Monitoring Wali Santri dan Panel Kasir/Pengelola Pesantren.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
