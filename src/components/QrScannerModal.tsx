@@ -17,6 +17,15 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
   const qrCodeRef = useRef<Html5Qrcode | null>(null);
   const elementId = "camera-qr-reader";
 
+  // Use refs for callbacks to prevent re-initializing the scanner when parent functions change references
+  const onScanSuccessRef = useRef(onScanSuccess);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+    onCloseRef.current = onClose;
+  }, [onScanSuccess, onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -44,12 +53,12 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
           (decodedText) => {
             if (scanner.isScanning) {
               scanner.stop().then(() => {
-                onScanSuccess(decodedText);
+                onScanSuccessRef.current(decodedText);
               }).catch(() => {
-                onScanSuccess(decodedText);
+                onScanSuccessRef.current(decodedText);
               });
             } else {
-              onScanSuccess(decodedText);
+              onScanSuccessRef.current(decodedText);
             }
           },
           () => {
@@ -77,12 +86,28 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
         }
       }
     };
-  }, [isOpen, onClose, onScanSuccess]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-emerald-950/75 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {/* CSS Styles to force html5-qrcode video element to fill container perfectly */}
+      <style>{`
+        #${elementId} video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          border-radius: 1rem !important;
+          ${isMirrored ? 'transform: scaleX(-1) !important;' : 'transform: none !important;'}
+        }
+        #${elementId} {
+          border: none !important;
+          background: #000000 !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+      `}</style>
       <div className="bg-white rounded-[24px] w-full max-w-sm overflow-hidden border border-emerald-100 shadow-2xl relative flex flex-col transform animate-in zoom-in-95 duration-250">
         {/* Top bar */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-emerald-950 text-white">
@@ -137,8 +162,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
               {/* The element where html5-qrcode will bind */}
               <div 
                 id={elementId} 
-                className={`w-full h-full object-cover transition-transform ${isMirrored ? '[&_video]:-scale-x-100' : ''}`}
-                style={isMirrored ? { transform: 'scaleX(-1)' } : undefined}
+                className="w-full h-full"
               />
 
               {/* Loader */}
