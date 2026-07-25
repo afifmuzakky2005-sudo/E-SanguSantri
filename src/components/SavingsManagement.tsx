@@ -377,7 +377,7 @@ export default function SavingsManagement({
   const dormsList = Array.from(new Set(students.map(s => s.dorm).filter(Boolean)));
 
   const filteredStudents = students.filter(student => {
-    const matchesSavings = true; // Show all students to allow activation/deactivation of savings on the savings page
+    const matchesSavings = student.hasSavings === true;
     const matchesSearch = 
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.nis.toLowerCase().includes(searchQuery.toLowerCase());
@@ -406,6 +406,7 @@ export default function SavingsManagement({
   };
 
   const [showAddSavingsModal, setShowAddSavingsModal] = useState(false);
+  const [addSavingsSearch, setAddSavingsSearch] = useState('');
 
   // Sorting
   if (sortConfig) {
@@ -1194,28 +1195,45 @@ export default function SavingsManagement({
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto space-y-4">
-              <p className="text-xs text-gray-500 font-bold leading-relaxed mb-4">
-                Pilih santri yang belum memiliki akun tabungan untuk mengaktifkan fasilitas E-Sangu.
-              </p>
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col min-h-[300px]">
+              <div className="mb-4 space-y-3">
+                <p className="text-xs text-gray-500 font-bold leading-relaxed">
+                  Pilih santri yang belum memiliki akun tabungan untuk mengaktifkan fasilitas E-Sangu.
+                </p>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Cari nama atau NIS..."
+                    value={addSavingsSearch}
+                    onChange={(e) => setAddSavingsSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none font-medium"
+                  />
+                </div>
+              </div>
               
               {nonSavingsStudents.length === 0 ? (
-                <div className="py-10 text-center space-y-3">
+                <div className="py-10 text-center space-y-3 flex-1 flex flex-col items-center justify-center">
                   <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-300 mx-auto">
                     <UserCheck className="w-6 h-6" />
                   </div>
                   <p className="text-sm font-bold text-gray-400">Semua santri sudah memiliki tabungan.</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {nonSavingsStudents.map(student => (
+                <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {nonSavingsStudents
+                    .filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch))
+                    .map(student => (
                     <button
                       key={student.id}
                       onClick={() => {
                         onActivateSavings(student.id);
                         setShowAddSavingsModal(false);
+                        setAddSavingsSearch('');
                       }}
-                      className="w-full p-4 flex items-center justify-between bg-emerald-50/50 hover:bg-emerald-100/50 border border-emerald-100 rounded-2xl transition group text-left cursor-pointer"
+                      className="w-full p-4 flex items-center justify-between bg-emerald-50/50 hover:bg-emerald-100/50 border border-emerald-100 rounded-2xl transition group text-left cursor-pointer shrink-0"
                     >
                       <div>
                         <p className="text-xs font-black text-emerald-950 uppercase tracking-tight group-hover:text-emerald-700">{student.name}</p>
@@ -1224,13 +1242,22 @@ export default function SavingsManagement({
                       <ChevronRight className="w-4 h-4 text-emerald-300 group-hover:translate-x-1 transition" />
                     </button>
                   ))}
+                  
+                  {nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length === 0 && addSavingsSearch !== '' && (
+                    <div className="py-8 text-center text-xs text-gray-400 font-bold">
+                      Pencarian "{addSavingsSearch}" tidak ditemukan.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
             
             <div className="p-4 bg-gray-50 border-t border-gray-100">
               <button
-                onClick={() => setShowAddSavingsModal(false)}
+                onClick={() => {
+                  setShowAddSavingsModal(false);
+                  setAddSavingsSearch('');
+                }}
                 className="w-full py-3 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-700 transition cursor-pointer border-none bg-transparent"
               >
                 Tutup

@@ -56,7 +56,7 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
       try {
         const canvas = document.createElement('canvas');
         canvas.width = 300;
-        canvas.height = 360;
+        canvas.height = 340;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           resolve();
@@ -74,22 +74,17 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
 
         // Draw NIS under QR
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 16px Courier New, monospace';
+        ctx.font = 'bold 18px Courier New, monospace';
         ctx.textAlign = 'center';
         ctx.fillText(student.nis, canvas.width / 2, 290);
 
         // Draw Name under NIS
         ctx.fillStyle = '#475569';
-        ctx.font = 'bold 12px Arial, sans-serif';
+        ctx.font = 'bold 14px Arial, sans-serif';
         const nameText = student.name.toUpperCase();
-        const maxLen = 28;
+        const maxLen = 25;
         const displayName = nameText.length > maxLen ? nameText.substring(0, maxLen) + '...' : nameText;
         ctx.fillText(displayName, canvas.width / 2, 315);
-
-        // Draw Class / Dorm under Name
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 9px Arial, sans-serif';
-        ctx.fillText(`${student.className} • ${student.dorm || '-'}`, canvas.width / 2, 335);
 
         canvas.toBlob((blob) => {
           if (blob) {
@@ -476,6 +471,16 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
                   </div>
 
                   <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        const s = students.find(s => s.id === selectedQrStudentId);
+                        if (s) downloadSinglePlainQr(s);
+                      }}
+                      className="flex items-center justify-center gap-2 py-2 px-4 bg-slate-600 hover:bg-slate-700 active:bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border-none shadow-md shadow-slate-600/10"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Unduh QR Polos
+                    </button>
                     <button
                       onClick={() => {
                         const s = students.find(s => s.id === selectedQrStudentId);
