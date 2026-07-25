@@ -54,6 +54,7 @@ interface AdminPanelProps {
   onLogout: () => void;
   // State update handlers
   onAddStudent: (s: Omit<Santri, 'id'>) => void;
+  onAddStudents?: (s: Omit<Santri, 'id'>[]) => void;
   onEditStudent: (s: Santri) => void;
   onDeleteStudent: (id: string) => void;
   onBulkDeleteStudents?: (ids: string[]) => void;
@@ -86,6 +87,7 @@ export default function AdminPanel({
   currentUser,
   onLogout,
   onAddStudent,
+  onAddStudents,
   onEditStudent,
   onDeleteStudent,
   onBulkDeleteStudents,
@@ -839,6 +841,7 @@ export default function AdminPanel({
             transactions={transactions}
             institution={institution}
             onAddStudent={onAddStudent}
+            onAddStudents={onAddStudents}
             onEditStudent={onEditStudent}
             onDeleteStudent={onDeleteStudent}
             onBulkDeleteStudents={onBulkDeleteStudents}
@@ -1204,6 +1207,7 @@ export default function AdminPanel({
             students={students}
             institution={institution}
             onAddStudent={onAddStudent}
+            onAddStudents={onAddStudents}
             institutionClasses={institution.classes}
           />
         )}

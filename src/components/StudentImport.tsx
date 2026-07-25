@@ -8,6 +8,7 @@ interface StudentImportProps {
   students: Santri[];
   institution: InstitutionSettings;
   onAddStudent: (student: Omit<Santri, 'id'>) => void;
+  onAddStudents?: (students: Omit<Santri, 'id'>[]) => void;
   institutionClasses?: string[];
 }
 
@@ -15,6 +16,7 @@ export default function StudentImport({
   students,
   institution,
   onAddStudent,
+  onAddStudents,
   institutionClasses
 }: StudentImportProps) {
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -188,8 +190,8 @@ export default function StudentImport({
       return;
     }
 
-    validStudents.forEach((student) => {
-      onAddStudent({
+    if (onAddStudents) {
+      onAddStudents(validStudents.map(student => ({
         nis: student.nis,
         name: student.name,
         className: student.className,
@@ -197,8 +199,20 @@ export default function StudentImport({
         guardianPhone: student.guardianPhone,
         status: 'Aktif',
         hasSavings: true // automatically enable savings as they are now active
+      })));
+    } else {
+      validStudents.forEach((student) => {
+        onAddStudent({
+          nis: student.nis,
+          name: student.name,
+          className: student.className,
+          dorm: student.dorm,
+          guardianPhone: student.guardianPhone,
+          status: 'Aktif',
+          hasSavings: true
+        });
       });
-    });
+    }
 
     alert(`Berhasil mengimpor ${validStudents.length} santri dari Excel!`);
     resetImport();

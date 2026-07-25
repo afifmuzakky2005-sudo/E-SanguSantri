@@ -11,6 +11,7 @@ interface StudentManagementProps {
   transactions: Transaction[];
   institution: InstitutionSettings;
   onAddStudent: (student: Omit<Santri, 'id'>) => void;
+  onAddStudents?: (students: Omit<Santri, 'id'>[]) => void;
   onEditStudent: (student: Santri) => void;
   onDeleteStudent: (id: string) => void;
   onBulkDeleteStudents?: (ids: string[]) => void;
@@ -26,6 +27,7 @@ export default function StudentManagement({
   transactions,
   institution,
   onAddStudent,
+  onAddStudents,
   onEditStudent,
   onDeleteStudent,
   onBulkDeleteStudents,
@@ -305,17 +307,28 @@ export default function StudentManagement({
       alert('Tidak ada data santri yang valid untuk diimpor!');
       return;
     }
-
-    validStudents.forEach((student) => {
-      onAddStudent({
+    
+    if (onAddStudents) {
+      onAddStudents(validStudents.map(student => ({
         nis: student.nis,
         name: student.name,
         className: student.className,
         dorm: student.dorm,
         guardianPhone: student.guardianPhone,
         status: 'Aktif'
+      })));
+    } else {
+      validStudents.forEach((student) => {
+        onAddStudent({
+          nis: student.nis,
+          name: student.name,
+          className: student.className,
+          dorm: student.dorm,
+          guardianPhone: student.guardianPhone,
+          status: 'Aktif'
+        });
       });
-    });
+    }
 
     alert(`Berhasil mengimpor ${validStudents.length} santri dari Excel!`);
     setShowImportModal(false);
@@ -395,7 +408,6 @@ export default function StudentManagement({
         'Kelas': s.className,
         'Asrama': s.dorm,
         'No. WA Wali': s.guardianPhone,
-        'Kontak Wali': s.guardianPhone,
         'Saldo Tabungan': bal.tabungan,
         'Saldo Penitipan': bal.penitipan,
         'Total Saldo': bal.total,

@@ -148,6 +148,22 @@ export default function App() {
     if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Tambah Santri', `Menambahkan santri baru: ${nextStudent.name} (${nextStudent.nis})`);
   };
 
+  const handleAddStudents = (newStudents: Omit<Santri, 'id'>[]) => {
+    const nextStudents: Santri[] = newStudents.map((newS, idx) => ({
+      ...newS,
+      id: 's_' + Date.now().toString() + '_' + idx,
+      hasSavings: false,
+      savingsActive: false
+    }));
+    
+    setStudents(prev => {
+      const updated = [...prev, ...nextStudents];
+      saveFirebaseData({ santri: nextStudents });
+      return updated;
+    });
+    if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Impor Santri', `Menambahkan ${nextStudents.length} santri baru dari Excel`);
+  };
+
   // Update Favicon and Title dynamically
   useEffect(() => {
     if (institution) {
@@ -600,6 +616,7 @@ export default function App() {
               currentUser={loggedInAdmin}
               onLogout={handleAdminLogout}
               onAddStudent={handleAddStudent}
+              onAddStudents={handleAddStudents}
               onEditStudent={handleEditStudent}
               onDeleteStudent={handleDeleteStudent}
               onBulkDeleteStudents={handleBulkDeleteStudents}
