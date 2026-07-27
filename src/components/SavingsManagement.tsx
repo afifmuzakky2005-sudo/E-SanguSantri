@@ -17,6 +17,7 @@ interface SavingsManagementProps {
   onActivateSavings: (id: string) => void;
   onDeactivateSavings: (id: string) => void;
   onBulkDeactivateSavings?: (ids: string[]) => void;
+  onBulkActivateSavings?: (ids: string[]) => void;
   institutionClasses?: string[];
   registrations?: PendingRegistration[];
   onDeleteRegistration?: (regId: string) => void;
@@ -31,6 +32,7 @@ export default function SavingsManagement({
   onActivateSavings,
   onDeactivateSavings,
   onBulkDeactivateSavings,
+  onBulkActivateSavings,
   institutionClasses = [],
   registrations = [],
   onDeleteRegistration
@@ -407,6 +409,7 @@ export default function SavingsManagement({
 
   const [showAddSavingsModal, setShowAddSavingsModal] = useState(false);
   const [addSavingsSearch, setAddSavingsSearch] = useState('');
+  const [addSavingsSelectedIds, setAddSavingsSelectedIds] = useState<string[]>([]);
 
   // Sorting
   if (sortConfig) {
@@ -1223,24 +1226,49 @@ export default function SavingsManagement({
                 </div>
               ) : (
                 <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex items-center p-2 mb-2 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="flex items-center gap-3 w-full cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        className="w-4 h-4 accent-emerald-600 rounded cursor-pointer ml-2"
+                        checked={addSavingsSelectedIds.length === nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length && nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAddSavingsSelectedIds(nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).map(s => s.id));
+                          } else {
+                            setAddSavingsSelectedIds([]);
+                          }
+                        }}
+                      />
+                      <span className="text-xs font-black text-slate-700">PILIH SEMUA</span>
+                    </label>
+                  </div>
                   {nonSavingsStudents
                     .filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch))
                     .map(student => (
-                    <button
+                    <label
                       key={student.id}
-                      onClick={() => {
-                        onActivateSavings(student.id);
-                        setShowAddSavingsModal(false);
-                        setAddSavingsSearch('');
-                      }}
                       className="w-full p-4 flex items-center justify-between bg-emerald-50/50 hover:bg-emerald-100/50 border border-emerald-100 rounded-2xl transition group text-left cursor-pointer shrink-0"
                     >
-                      <div>
-                        <p className="text-xs font-black text-emerald-950 uppercase tracking-tight group-hover:text-emerald-700">{student.name}</p>
-                        <p className="text-[10px] font-bold text-emerald-600/70">{student.nis} • {student.className}</p>
+                      <div className="flex items-center gap-4">
+                        <input 
+                          type="checkbox"
+                          className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                          checked={addSavingsSelectedIds.includes(student.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAddSavingsSelectedIds([...addSavingsSelectedIds, student.id]);
+                            } else {
+                              setAddSavingsSelectedIds(addSavingsSelectedIds.filter(id => id !== student.id));
+                            }
+                          }}
+                        />
+                        <div>
+                          <p className="text-xs font-black text-emerald-950 uppercase tracking-tight group-hover:text-emerald-700">{student.name}</p>
+                          <p className="text-[10px] font-bold text-emerald-600/70">{student.nis} • {student.className}</p>
+                        </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-emerald-300 group-hover:translate-x-1 transition" />
-                    </button>
+                    </label>
                   ))}
                   
                   {nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length === 0 && addSavingsSearch !== '' && (
@@ -1252,11 +1280,29 @@ export default function SavingsManagement({
               )}
             </div>
             
-            <div className="p-4 bg-gray-50 border-t border-gray-100">
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-2">
+              {addSavingsSelectedIds.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (onBulkActivateSavings) {
+                      onBulkActivateSavings(addSavingsSelectedIds);
+                    } else {
+                      addSavingsSelectedIds.forEach(id => onActivateSavings(id));
+                    }
+                    setShowAddSavingsModal(false);
+                    setAddSavingsSearch('');
+                    setAddSavingsSelectedIds([]);
+                  }}
+                  className="w-full py-3 text-xs font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition cursor-pointer border-none shadow-md"
+                >
+                  Buka Tabungan Terpilih ({addSavingsSelectedIds.length})
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowAddSavingsModal(false);
                   setAddSavingsSearch('');
+                  setAddSavingsSelectedIds([]);
                 }}
                 className="w-full py-3 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-gray-700 transition cursor-pointer border-none bg-transparent"
               >

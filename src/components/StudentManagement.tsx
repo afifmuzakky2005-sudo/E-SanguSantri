@@ -262,9 +262,7 @@ export default function StudentManagement({
             }
           }
 
-          if (!rowDorm) {
-            rowErrors.push('Asrama wajib diisi');
-          } else {
+          if (rowDorm) {
             const matchedDorm = (institution.dorms || []).find(d => d.toLowerCase() === rowDorm.toLowerCase());
             if (!matchedDorm) {
               rowErrors.push(`Asrama "${rowDorm}" tidak terdaftar di pengaturan`);
@@ -341,7 +339,7 @@ export default function StudentManagement({
   const handleSaveAdd = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!nis || !name || !className || !dorm) {
+    if (!nis || !name || !className) {
       setFormError('Mohon lengkapi seluruh field wajib!');
       return;
     }
@@ -370,7 +368,7 @@ export default function StudentManagement({
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!selectedStudentId || !nis || !name || !className || !dorm) {
+    if (!selectedStudentId || !nis || !name || !className) {
       setFormError('Mohon lengkapi seluruh field wajib!');
       return;
     }
@@ -738,7 +736,7 @@ export default function StudentManagement({
                     value={dorm} onChange={(e) => setDorm(e.target.value)}
                     className="w-full px-4 py-3 text-xs font-bold bg-emerald-50 border border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-600 cursor-pointer"
                   >
-                    <option value="" disabled>-- Pilih Asrama --</option>
+                    <option value="">-- Pilih Asrama (Opsional) --</option>
                     {dormsList.map((drm) => <option key={drm} value={drm}>{drm}</option>)}
                   </select>
                 </div>
@@ -860,6 +858,7 @@ export default function StudentManagement({
                     value={dorm} onChange={(e) => setDorm(e.target.value)}
                     className="w-full px-4 py-3 text-xs font-bold bg-emerald-50 border border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-600 cursor-pointer"
                   >
+                    <option value="">-- Pilih Asrama (Opsional) --</option>
                     {dormsList.map((drm) => <option key={drm} value={drm}>{drm}</option>)}
                   </select>
                 </div>
@@ -1173,11 +1172,11 @@ export default function StudentManagement({
                   Petunjuk & Aturan File Excel
                 </h4>
                 <ul className="text-xs text-gray-600 space-y-2 list-disc list-inside font-medium">
-                  <li>Kolom wajib: <strong className="text-emerald-800">NIS</strong>, <strong className="text-emerald-800">Nama</strong>, <strong className="text-emerald-800">Kelas</strong>, <strong className="text-emerald-800">Asrama</strong>.</li>
+                  <li>Kolom wajib: <strong className="text-emerald-800">NIS</strong>, <strong className="text-emerald-800">Nama</strong>, <strong className="text-emerald-800">Kelas</strong>.</li>
                   <li>Aturan <strong className="text-emerald-800">NIS wajib berisi tepat 8 digit angka</strong>. Sistem akan menolak jika kurang/lebih atau bukan angka.</li>
                   <li>Sistem mendeteksi dan mencegah duplikasi NIS yang sudah terdaftar.</li>
-                  <li>Nama kelas dan asrama harus persis sesuai yang terdaftar di pengaturan lembaga.</li>
-                  <li>Kolom <strong className="text-emerald-800">No Wali</strong> bersifat opsional, gunakan format angka (misal: <code className="bg-white px-1 py-0.5 rounded text-[10px] font-mono border">08123456789</code>).</li>
+                  <li>Nama kelas (wajib) dan asrama (opsional) harus persis sesuai yang terdaftar di pengaturan lembaga.</li>
+                  <li>Kolom <strong className="text-emerald-800">Asrama</strong> dan <strong className="text-emerald-800">No Wali</strong> bersifat opsional, gunakan format angka (misal: <code className="bg-white px-1 py-0.5 rounded text-[10px] font-mono border">08123456789</code>).</li>
                 </ul>
                 <div className="pt-2">
                   <button

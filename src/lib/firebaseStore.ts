@@ -165,8 +165,11 @@ export async function saveFirebaseData(data: {
     }
 
     await batch.commit();
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error saving data to Firebase:", error);
+    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota')) {
+      alert("Maaf, kuota database Firebase harian Anda telah habis. Perubahan hanya tersimpan sementara di aplikasi dan akan hilang saat halaman dimuat ulang. Silakan coba lagi besok.");
+    }
   }
 }
 
@@ -178,7 +181,10 @@ export async function deleteFirebaseDocument(collectionName: string, id: string)
     const batch = writeBatch(db);
     batch.delete(docRef);
     await batch.commit();
-  } catch (e) {
+  } catch (e: any) {
     console.error("Error deleting doc:", e);
+    if (e?.code === 'resource-exhausted' || e?.message?.includes('Quota')) {
+      alert("Maaf, kuota database Firebase harian Anda telah habis. Perubahan hanya tersimpan sementara.");
+    }
   }
 }

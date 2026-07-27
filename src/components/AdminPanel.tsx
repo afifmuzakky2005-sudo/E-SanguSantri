@@ -74,6 +74,7 @@ interface AdminPanelProps {
   onActivateSavings: (id: string) => void;
   onDeactivateSavings: (id: string) => void;
   onBulkDeactivateSavings?: (ids: string[]) => void;
+  onBulkActivateSavings?: (ids: string[]) => void;
 }
 
 export default function AdminPanel({
@@ -106,7 +107,8 @@ export default function AdminPanel({
   onDeleteRegistration,
   onActivateSavings,
   onDeactivateSavings,
-  onBulkDeactivateSavings
+  onBulkDeactivateSavings,
+  onBulkActivateSavings
 }: AdminPanelProps) {
   const [activeMenu, setActiveMenu] = useState<'dashboard' | 'datamaster' | 'datatabungan' | 'pendaftaran' | 'pengajuan' | 'transaksi' | 'riwayat' | 'laporan' | 'impor_santri' | 'backup' | 'log_aktifitas' | 'pengaturan' | 'akun_pengguna'>('dashboard');
   const [prefilledTransaction, setPrefilledTransaction] = useState<{
@@ -864,6 +866,7 @@ export default function AdminPanel({
             onActivateSavings={onActivateSavings}
             onDeactivateSavings={onDeactivateSavings}
             onBulkDeactivateSavings={onBulkDeactivateSavings}
+            onBulkActivateSavings={onBulkActivateSavings}
             institutionClasses={institution.classes}
             registrations={registrations}
             onDeleteRegistration={onDeleteRegistration}

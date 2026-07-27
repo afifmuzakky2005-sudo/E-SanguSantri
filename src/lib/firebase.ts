@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { setLogLevel, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -16,3 +16,5 @@ export const db = initializeFirestore(app, {
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
 
+
+setLogLevel("silent");

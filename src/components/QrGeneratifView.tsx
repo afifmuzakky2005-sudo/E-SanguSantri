@@ -15,7 +15,9 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ChevronRight, 
-  Camera 
+  Camera,
+  Search,
+  X
 } from 'lucide-react';
 
 interface QrGeneratifViewProps {
@@ -45,18 +47,39 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
+  // States for searchable student selector
+  const [qrSearchQuery, setQrSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // States for download QR options modal
+  const [showQrOptionsModal, setShowQrOptionsModal] = useState(false);
+  const [downloadTarget, setDownloadTarget] = useState<'single' | 'all'>('single');
+  const [qrOptions, setQrOptions] = useState({
+    includeNis: true,
+    includeName: true,
+    includeClass: true,
+    includeDorm: true
+  });
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
   const studentsWithSavings = students.filter(s => s.hasSavings && s.savingsActive !== false);
 
-  const downloadSinglePlainQr = async (student: Santri) => {
+  const downloadSinglePlainQr = async (student: Santri, opts: { includeNis: boolean, includeName: boolean, includeClass: boolean, includeDorm: boolean } = { includeNis: true, includeName: true, includeClass: true, includeDorm: true }) => {
     return new Promise<void>(async (resolve) => {
       try {
         const canvas = document.createElement('canvas');
         canvas.width = 300;
-        canvas.height = 340;
+        
+        let currentY = 270;
+        if (opts.includeNis) currentY += 25;
+        if (opts.includeName) currentY += 25;
+        if (opts.includeClass || opts.includeDorm) currentY += 20;
+
+        canvas.height = Math.max(280, currentY + 15);
+        
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           resolve();
@@ -70,25 +93,42 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
         // Render QR Code
         const qrCanvas = document.createElement('canvas');
         await QRCode.toCanvas(qrCanvas, student.nis, { width: 240, margin: 1 });
-        ctx.drawImage(qrCanvas, (canvas.width - 240) / 2, 20, 240, 240);
+        ctx.drawImage(qrCanvas, (canvas.width - 240) / 2, 15, 240, 240);
 
-        // Draw NIS under QR
-        ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 18px Courier New, monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(student.nis, canvas.width / 2, 290);
+        let textY = 280;
+        if (opts.includeNis) {
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 18px Courier New, monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(student.nis, canvas.width / 2, textY);
+          textY += 25;
+        }
 
-        // Draw Name under NIS
-        ctx.fillStyle = '#475569';
-        ctx.font = 'bold 14px Arial, sans-serif';
-        const nameText = student.name.toUpperCase();
-        const maxLen = 25;
-        const displayName = nameText.length > maxLen ? nameText.substring(0, maxLen) + '...' : nameText;
-        ctx.fillText(displayName, canvas.width / 2, 315);
+        if (opts.includeName) {
+          ctx.fillStyle = '#475569';
+          ctx.font = 'bold 14px Arial, sans-serif';
+          const nameText = student.name.toUpperCase();
+          const maxLen = 25;
+          const displayName = nameText.length > maxLen ? nameText.substring(0, maxLen) + '...' : nameText;
+          ctx.textAlign = 'center';
+          ctx.fillText(displayName, canvas.width / 2, textY);
+          textY += 20;
+        }
+        
+        if (opts.includeClass || opts.includeDorm) {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 11px Arial, sans-serif';
+          ctx.textAlign = 'center';
+          
+          let parts = [];
+          if (opts.includeClass) parts.push(student.className);
+          if (opts.includeDorm && student.dorm) parts.push(student.dorm);
+          ctx.fillText(parts.join(' • '), canvas.width / 2, textY);
+        }
 
         canvas.toBlob((blob) => {
           if (blob) {
-            saveAs(blob, `QR_POLOS_${student.nis}_${student.name.replace(/\s+/g, '_')}.png`);
+            saveAs(blob, `QR_${student.nis}_${student.name.replace(/\s+/g, '_')}.png`);
           }
           resolve();
         });
@@ -99,29 +139,31 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
     });
   };
 
-  const handleDownloadAllQr = async () => {
-    const list = students.filter(s => s.hasSavings);
-    if (list.length === 0) {
-      alert("Tidak ada data santri dengan fasilitas tabungan aktif.");
-      return;
+  const handleConfirmDownload = async () => {
+    setShowQrOptionsModal(false);
+    if (downloadTarget === 'single') {
+      const student = students.find(s => s.id === selectedQrStudentId);
+      if (student) await downloadSinglePlainQr(student, qrOptions);
+    } else {
+      const list = students; // Download all students from data santri
+      if (list.length === 0) {
+        alert("Tidak ada data santri.");
+        return;
+      }
+      
+      setIsDownloadingAll(true);
+      setDownloadProgress({ current: 0, total: list.length });
+
+      for (let i = 0; i < list.length; i++) {
+        const student = list[i];
+        setDownloadProgress({ current: i + 1, total: list.length });
+        await downloadSinglePlainQr(student, qrOptions);
+        // stagger to avoid browser downloads blocking
+        await new Promise(r => setTimeout(r, 450));
+      }
+
+      setIsDownloadingAll(false);
     }
-
-    if (!confirm(`Apakah Anda yakin ingin mengunduh ${list.length} QR code santri sekaligus? Beberapa peramban mungkin akan meminta izin unduhan ganda.`)) {
-      return;
-    }
-
-    setIsDownloadingAll(true);
-    setDownloadProgress({ current: 0, total: list.length });
-
-    for (let i = 0; i < list.length; i++) {
-      const student = list[i];
-      setDownloadProgress({ current: i + 1, total: list.length });
-      await downloadSinglePlainQr(student);
-      // stagger to avoid browser downloads blocking
-      await new Promise(r => setTimeout(r, 450));
-    }
-
-    setIsDownloadingAll(false);
   };
 
   useEffect(() => {
@@ -389,7 +431,7 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
             {isDownloadingAll ? (
               <div className="flex flex-col sm:items-end justify-center bg-slate-50 border border-slate-200 px-4 py-2 rounded-2xl min-w-[180px]">
                 <div className="flex justify-between items-center w-full mb-1">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 animate-pulse">Mengunduh QR Polos...</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 animate-pulse">Mengunduh QR...</span>
                   <span className="text-[10px] font-bold font-mono text-slate-800">{downloadProgress.current}/{downloadProgress.total}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
@@ -401,11 +443,11 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
               </div>
             ) : (
               <button
-                onClick={handleDownloadAllQr}
+                onClick={() => { setDownloadTarget('all'); setShowQrOptionsModal(true); }}
                 className="flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border-none shadow-md shadow-emerald-600/15 shrink-0"
               >
                 <Download className="w-4 h-4" />
-                Unduh Semua QR Polos
+                Unduh Semua QR
               </button>
             )}
             <div className="text-[10px] text-center font-black text-slate-600 bg-slate-50 border border-slate-200 px-3.5 py-3 rounded-xl font-mono uppercase tracking-wider h-full flex items-center justify-center">
@@ -428,18 +470,50 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
             {/* Selector */}
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Pilih Santri Terdaftar</label>
-              <select
-                value={selectedQrStudentId}
-                onChange={(e) => setSelectedQrStudentId(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition cursor-pointer shadow-xs"
-              >
-                <option value="" disabled>-- Pilih Santri --</option>
-                {students.filter(s => s.hasSavings).map((student) => (
-                  <option key={student.id} value={student.id}>
-                    [{student.nis}] - {student.name.toUpperCase()} ({student.className})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ketik nama atau NIS..."
+                  value={qrSearchQuery}
+                  onChange={(e) => {
+                    setQrSearchQuery(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-xs"
+                />
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 shadow-xl rounded-xl z-20 max-h-60 overflow-y-auto custom-scrollbar">
+                    {students
+                      .filter(s => s.name.toLowerCase().includes(qrSearchQuery.toLowerCase()) || s.nis.includes(qrSearchQuery))
+                      .map((student) => (
+                        <button
+                          key={student.id}
+                          onClick={() => {
+                            setSelectedQrStudentId(student.id);
+                            setQrSearchQuery(`[${student.nis}] - ${student.name.toUpperCase()} (${student.className})`);
+                            setIsDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 last:border-0 cursor-pointer"
+                        >
+                          [{student.nis}] - {student.name.toUpperCase()} ({student.className})
+                        </button>
+                      ))}
+                    {students.filter(s => s.name.toLowerCase().includes(qrSearchQuery.toLowerCase()) || s.nis.includes(qrSearchQuery)).length === 0 && (
+                      <div className="px-4 py-4 text-center text-xs text-slate-400 font-bold">
+                        Santri tidak ditemukan.
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Invisible backdrop to close dropdown */}
+                {isDropdownOpen && (
+                  <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
+                )}
+              </div>
             </div>
 
             {selectedQrStudentId && (
@@ -473,13 +547,13 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => {
-                        const s = students.find(s => s.id === selectedQrStudentId);
-                        if (s) downloadSinglePlainQr(s);
+                        setDownloadTarget('single');
+                        setShowQrOptionsModal(true);
                       }}
                       className="flex items-center justify-center gap-2 py-2 px-4 bg-slate-600 hover:bg-slate-700 active:bg-slate-800 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border-none shadow-md shadow-slate-600/10"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Unduh QR Polos
+                      Unduh QR
                     </button>
                     <button
                       onClick={() => {
@@ -641,6 +715,88 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
           </div>
         </div>
       </div>
+
+      
+      {/* QR Options Modal */}
+      {showQrOptionsModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] w-full max-w-sm overflow-hidden border border-slate-100 shadow-2xl flex flex-col">
+            <div className="bg-slate-800 p-5 text-white flex justify-between items-center">
+              <h3 className="font-black text-base tracking-tight uppercase">Opsi Unduh QR</h3>
+              <button onClick={() => setShowQrOptionsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition border-none cursor-pointer">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <p className="text-xs text-slate-500 font-bold">Pilih data yang ingin ditampilkan pada hasil unduhan QR Code:</p>
+              
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-not-allowed opacity-80">
+                  <input type="checkbox" checked disabled className="w-4 h-4 accent-emerald-600 rounded" />
+                  <span className="text-xs font-black text-slate-700">QR POLOS</span>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-200 cursor-pointer transition">
+                  <input 
+                    type="checkbox" 
+                    checked={qrOptions.includeNis} 
+                    onChange={(e) => setQrOptions({...qrOptions, includeNis: e.target.checked})}
+                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer" 
+                  />
+                  <span className="text-xs font-black text-slate-700">NIS</span>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-200 cursor-pointer transition">
+                  <input 
+                    type="checkbox" 
+                    checked={qrOptions.includeName} 
+                    onChange={(e) => setQrOptions({...qrOptions, includeName: e.target.checked})}
+                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer" 
+                  />
+                  <span className="text-xs font-black text-slate-700">NAMA</span>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-200 cursor-pointer transition">
+                  <input 
+                    type="checkbox" 
+                    checked={qrOptions.includeClass} 
+                    onChange={(e) => setQrOptions({...qrOptions, includeClass: e.target.checked})}
+                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer" 
+                  />
+                  <span className="text-xs font-black text-slate-700">KELAS</span>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-200 cursor-pointer transition">
+                  <input 
+                    type="checkbox" 
+                    checked={qrOptions.includeDorm} 
+                    onChange={(e) => setQrOptions({...qrOptions, includeDorm: e.target.checked})}
+                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer" 
+                  />
+                  <span className="text-xs font-black text-slate-700">ASRAMA</span>
+                </label>
+              </div>
+            </div>
+            
+            <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => setShowQrOptionsModal(false)}
+                className="px-5 py-2.5 text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-200 rounded-xl transition cursor-pointer border-none bg-transparent"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmDownload}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition shadow-md shadow-emerald-600/20 border-none cursor-pointer flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Unduh Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Camera scanner modal wrapper */}
       <QrScannerModal
