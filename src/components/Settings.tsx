@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { InstitutionSettings, FinancialSettings, User } from '../types';
-import { Save, CheckCircle, Shield, Settings2, HelpCircle, UserPlus, Trash2, BookOpen, Plus, Home, MessageSquare, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Save, CheckCircle, Shield, Settings2, HelpCircle, UserPlus, Trash2, BookOpen, Plus, Home, MessageSquare, RefreshCw, AlertTriangle, QrCode } from 'lucide-react';
 
 interface SettingsProps {
   institution: InstitutionSettings;
@@ -47,6 +47,9 @@ export default function Settings({
   const [finSavingsBookFee, setFinSavingsBookFee] = useState(financial.savingsBookFeeAmount || 5000);
   const [finMaxDepositAmt, setFinMaxDepositAmt] = useState(financial.maxDepositAmount || 500000);
   const [finQrBalanceCheckEnabled, setFinQrBalanceCheckEnabled] = useState(financial.qrBalanceCheckEnabled ?? true);
+  const [finBalanceCheckMethod, setFinBalanceCheckMethod] = useState<'manual' | 'qr' | 'both'>(
+    financial.balanceCheckMethod || (financial.qrBalanceCheckEnabled === false ? 'manual' : 'both')
+  );
   const [finAllowDeleteWithBalance, setFinAllowDeleteWithBalance] = useState(financial.allowDeleteWithBalance ?? false);
 
   // Class settings state
@@ -237,7 +240,8 @@ export default function Settings({
       adminFeePenitipanAmount: finFeePenAmt,
       savingsBookFeeAmount: finSavingsBookFee,
       maxDepositAmount: finMaxDepositAmt,
-      qrBalanceCheckEnabled: finQrBalanceCheckEnabled,
+      qrBalanceCheckEnabled: finBalanceCheckMethod !== 'manual',
+      balanceCheckMethod: finBalanceCheckMethod,
       allowDeleteWithBalance: finAllowDeleteWithBalance
     });
     triggerSuccess('Aturan kebijakan keuangan pesantren berhasil disimpan!');
@@ -565,21 +569,82 @@ export default function Settings({
               </div>
             </div>
 
-            {/* QR Passbook Feature Toggle */}
-            <div className="bg-gray-50 border border-gray-200 p-3.5 rounded-lg space-y-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="qr_balance_chk_en"
-                  checked={finQrBalanceCheckEnabled}
-                  onChange={(e) => setFinQrBalanceCheckEnabled(e.target.checked)}
-                  className="rounded text-emerald-600"
-                />
-                <label htmlFor="qr_balance_chk_en" className="font-black text-emerald-700 cursor-pointer uppercase tracking-widest text-[10px]">Aktifkan Scan QR Cek Saldo & QR Generatif</label>
+            {/* Mode Cek Saldo Beranda Settings */}
+            <div className="bg-emerald-50/50 border border-emerald-200/80 p-4 rounded-xl space-y-3">
+              <div>
+                <h4 className="font-black text-emerald-950 text-xs uppercase tracking-wider flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-emerald-600" />
+                  Metode Cek Saldo di Beranda Wali Santri
+                </h4>
+                <p className="text-[10px] text-emerald-900/70 font-semibold mt-0.5">
+                  Atur bagaimana cara wali santri mengecek saldo keuangan di beranda utama aplikasi.
+                </p>
               </div>
-              <p className="text-[10px] text-gray-500 leading-relaxed">
-                Jika diaktifkan, menu "QR Generatif" akan muncul di panel tabungan santri, yang mendukung fitur scan/test QR, pembuatan QR baru berdasarkan NIS santri terdaftar, dan download QR (PNG/PDF).
-              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                {/* Option 1: Both */}
+                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'both' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="balanceCheckMethod"
+                      value="both"
+                      checked={finBalanceCheckMethod === 'both'}
+                      onChange={() => {
+                        setFinBalanceCheckMethod('both');
+                        setFinQrBalanceCheckEnabled(true);
+                      }}
+                      className="accent-emerald-600 cursor-pointer"
+                    />
+                    <span className="font-black text-xs text-emerald-950">Keduanya</span>
+                  </div>
+                  <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
+                    Bisa isi manual NIS atau tombol Scan QR Kamera
+                  </span>
+                </label>
+
+                {/* Option 2: Manual */}
+                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'manual' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="balanceCheckMethod"
+                      value="manual"
+                      checked={finBalanceCheckMethod === 'manual'}
+                      onChange={() => {
+                        setFinBalanceCheckMethod('manual');
+                        setFinQrBalanceCheckEnabled(false);
+                      }}
+                      className="accent-emerald-600 cursor-pointer"
+                    />
+                    <span className="font-black text-xs text-emerald-950">Isi Manual Saja</span>
+                  </div>
+                  <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
+                    Hanya menampilkan form input Kelas, Nama & NIS
+                  </span>
+                </label>
+
+                {/* Option 3: QR */}
+                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'qr' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="balanceCheckMethod"
+                      value="qr"
+                      checked={finBalanceCheckMethod === 'qr'}
+                      onChange={() => {
+                        setFinBalanceCheckMethod('qr');
+                        setFinQrBalanceCheckEnabled(true);
+                      }}
+                      className="accent-emerald-600 cursor-pointer"
+                    />
+                    <span className="font-black text-xs text-emerald-950">Scan QR Saja</span>
+                  </div>
+                  <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
+                    Langsung menampilkan kamera pemindai QR di beranda
+                  </span>
+                </label>
+              </div>
             </div>
 
             {/* Allow Delete Santri With Balance Toggle */}

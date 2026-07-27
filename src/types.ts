@@ -96,6 +96,7 @@ export interface FinancialSettings {
   savingsBookFeeAmount?: number;
   maxDepositAmount?: number;
   qrBalanceCheckEnabled?: boolean;
+  balanceCheckMethod?: 'manual' | 'qr' | 'both';
   allowDeleteWithBalance?: boolean;
 }
 

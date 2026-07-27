@@ -48,6 +48,7 @@ export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   savingsBookFeeAmount: 5000, // Rp5.000
   maxDepositAmount: 500000, // Rp500.000
   qrBalanceCheckEnabled: true, // Active by default
+  balanceCheckMethod: 'both',
   allowDeleteWithBalance: false
 };
 

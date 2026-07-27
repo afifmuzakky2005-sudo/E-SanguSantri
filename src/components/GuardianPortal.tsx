@@ -6,6 +6,7 @@ import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
 import { LogIn, KeyRound, Phone, CheckCircle2, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, Search, Info, UserPlus, MessageSquare, X, CheckCircle, Shield, BookOpen, Activity, TrendingUp, Sparkles, LogOut, User, Camera, QrCode, AlertCircle, PlusCircle, Upload, Image as ImageIcon, Clock, ChevronRight, Eye } from 'lucide-react';
 import { AllocationPieChart } from './VisualCharts';
 import { QrScannerModal } from './QrScannerModal';
+import { InlineQrScanner } from './InlineQrScanner';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface GuardianPortalProps {
@@ -61,6 +62,24 @@ export default function GuardianPortal({
   const [filterType, setFilterType] = useState<'Semua' | 'Setor' | 'Tarik'>('Semua');
   const [filterPos, setFilterPos] = useState<'Semua' | 'Tabungan' | 'Penitipan'>('Semua');
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+
+  // Method setting for Cek Saldo
+  const effectiveMethod: 'manual' | 'qr' | 'both' = financial?.balanceCheckMethod
+    ? financial.balanceCheckMethod
+    : (financial?.qrBalanceCheckEnabled === false ? 'manual' : 'both');
+
+  const [activeMethodTab, setActiveMethodTab] = useState<'manual' | 'qr'>(() => {
+    if (effectiveMethod === 'qr') return 'qr';
+    return 'manual';
+  });
+
+  React.useEffect(() => {
+    if (effectiveMethod === 'qr') {
+      setActiveMethodTab('qr');
+    } else if (effectiveMethod === 'manual') {
+      setActiveMethodTab('manual');
+    }
+  }, [effectiveMethod]);
 
   // Passbook modal state
   const [showPassbookModal, setShowPassbookModal] = useState(false);
@@ -401,112 +420,154 @@ export default function GuardianPortal({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start max-w-4xl mx-auto">
-                {/* Left Column: Unified Dropdown and NIS Checker Form */}
+                {/* Left Column: Unified Dropdown / NIS Checker / Inline QR Scanner */}
                 <div className="md:col-span-7 bg-white/45 backdrop-blur-xl rounded-[32px] p-8 shadow-2xl border border-white/60 space-y-6">
+                  {/* Tab Switcher if 'both' */}
+                  {effectiveMethod === 'both' && (
+                    <div className="flex bg-emerald-100/70 p-1.5 rounded-2xl border border-emerald-200/60 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => setActiveMethodTab('manual')}
+                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-2 ${
+                          activeMethodTab === 'manual'
+                            ? 'bg-white text-emerald-950 shadow-md'
+                            : 'text-emerald-850 hover:text-emerald-950'
+                        }`}
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                        Isi Manual
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMethodTab('qr')}
+                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-2 ${
+                          activeMethodTab === 'qr'
+                            ? 'bg-white text-emerald-950 shadow-md'
+                            : 'text-emerald-850 hover:text-emerald-950'
+                        }`}
+                      >
+                        <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                        Scan QR Kamera
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Header */}
                   <div className="flex items-center gap-3 pb-4 border-b border-emerald-950/10">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-900 flex items-center justify-center font-bold shadow-md">
-                      <Search className="w-5 h-5 text-emerald-900" />
+                      {activeMethodTab === 'qr' || effectiveMethod === 'qr' ? (
+                        <Camera className="w-5 h-5 text-emerald-900" />
+                      ) : (
+                        <Search className="w-5 h-5 text-emerald-900" />
+                      )}
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-emerald-950 text-sm uppercase tracking-wide">Cek Keuangan Santri</h3>
-                      <p className="text-[10px] text-emerald-900/60 font-bold">Verifikasi data santri secara akurat</p>
+                      <h3 className="font-extrabold text-emerald-950 text-sm uppercase tracking-wide">
+                        {activeMethodTab === 'qr' || effectiveMethod === 'qr' ? 'Pindai QR Cek Saldo' : 'Cek Keuangan Santri'}
+                      </h3>
+                      <p className="text-[10px] text-emerald-900/60 font-bold">
+                        {activeMethodTab === 'qr' || effectiveMethod === 'qr'
+                          ? 'Arahkan kamera ke QR Code / Kartu Tabungan Santri'
+                          : 'Verifikasi data santri secara akurat'}
+                      </p>
                     </div>
                   </div>
 
-                  <form onSubmit={handleVerifyAndCheck} className="space-y-5">
-                    {/* Dropdown 1: Pilih Kelas */}
-                    <div className="space-y-1.5">
-                      <label className="block font-black text-emerald-950 text-[10px] uppercase tracking-widest">
-                        PILIH KELAS
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={selectedClass}
-                          onChange={handleClassChange}
-                          required
-                          className="w-full p-4 bg-white/80 border-2 border-emerald-100 rounded-2xl text-xs font-black text-emerald-950 focus:outline-none focus:border-emerald-600 focus:bg-white appearance-none cursor-pointer transition-all"
-                        >
-                          <option value="" disabled>-- Pilih Kelas / Tingkatan --</option>
-                          {classesList.map((cls) => (
-                            <option key={cls} value={cls}>
-                              {cls}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute right-5 top-5 pointer-events-none text-emerald-850">
-                          <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                          </svg>
+                  {/* Content Area */}
+                  {activeMethodTab === 'qr' || effectiveMethod === 'qr' ? (
+                    <div className="space-y-4">
+                      <InlineQrScanner onScanSuccess={handleQrScanSuccess} />
+                      <p className="text-[10px] text-emerald-900/70 font-semibold text-center italic">
+                        Arahkan kamera perangkat Anda ke kartu tabungan atau dokumen QR santri untuk mengecek saldo secara otomatis.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleVerifyAndCheck} className="space-y-5">
+                      {/* Dropdown 1: Pilih Kelas */}
+                      <div className="space-y-1.5">
+                        <label className="block font-black text-emerald-950 text-[10px] uppercase tracking-widest">
+                          PILIH KELAS
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={selectedClass}
+                            onChange={handleClassChange}
+                            required
+                            className="w-full p-4 bg-white/80 border-2 border-emerald-100 rounded-2xl text-xs font-black text-emerald-950 focus:outline-none focus:border-emerald-600 focus:bg-white appearance-none cursor-pointer transition-all"
+                          >
+                            <option value="" disabled>-- Pilih Kelas / Tingkatan --</option>
+                            {classesList.map((cls) => (
+                              <option key={cls} value={cls}>
+                                {cls}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute right-5 top-5 pointer-events-none text-emerald-850">
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Dropdown 2: Pilih Nama Santri */}
-                    <div className="space-y-1.5">
-                      <label className="block font-black text-emerald-950 text-[10px] uppercase tracking-widest">
-                        PILIH NAMA SANTRI
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={selectedStudentId}
-                          onChange={(e) => setSelectedStudentId(e.target.value)}
-                          required
-                          disabled={!selectedClass}
-                          className="w-full p-4 bg-white/80 border-2 border-emerald-100 rounded-2xl text-xs font-black text-emerald-950 focus:outline-none focus:border-emerald-600 focus:bg-white disabled:opacity-60 appearance-none cursor-pointer transition-all"
-                        >
-                          <option value="">
-                            {selectedClass ? '-- Pilih Nama Santri --' : 'Silakan pilih kelas terlebih dahulu'}
-                          </option>
-                          {classStudents.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
+                      {/* Dropdown 2: Pilih Nama Santri */}
+                      <div className="space-y-1.5">
+                        <label className="block font-black text-emerald-950 text-[10px] uppercase tracking-widest">
+                          PILIH NAMA SANTRI
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={selectedStudentId}
+                            onChange={(e) => setSelectedStudentId(e.target.value)}
+                            required
+                            disabled={!selectedClass}
+                            className="w-full p-4 bg-white/80 border-2 border-emerald-100 rounded-2xl text-xs font-black text-emerald-950 focus:outline-none focus:border-emerald-600 focus:bg-white disabled:opacity-60 appearance-none cursor-pointer transition-all"
+                          >
+                            <option value="">
+                              {selectedClass ? '-- Pilih Nama Santri --' : 'Silakan pilih kelas terlebih dahulu'}
                             </option>
-                          ))}
-                        </select>
-                        <div className="absolute right-5 top-5 pointer-events-none text-emerald-850">
-                          <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                          </svg>
+                            {classStudents.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute right-5 top-5 pointer-events-none text-emerald-850">
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Input 3: NIS */}
-                    <div className="space-y-1.5">
-                      <label className="block font-black text-emerald-950 text-[10px] uppercase tracking-widest">
-                        NIS (NOMOR INDUK SANTRI)
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={8}
-                        minLength={8}
-                        pattern="\d*"
-                        placeholder="8-Digit NIS"
-                        value={nisInput}
-                        onChange={(e) => setNisInput(e.target.value)}
-                        className="w-full p-4 bg-white/80 border-2 border-emerald-100 rounded-2xl text-sm font-black tracking-[0.2em] text-emerald-950 focus:outline-none focus:border-emerald-600 focus:bg-white font-mono text-center transition-all"
-                      />
-                    </div>
+                      {/* Input 3: NIS */}
+                      <div className="space-y-1.5">
+                        <label className="block font-black text-emerald-950 text-[10px] uppercase tracking-widest">
+                          NIS (NOMOR INDUK SANTRI)
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={8}
+                          minLength={8}
+                          pattern="\d*"
+                          placeholder="8-Digit NIS"
+                          value={nisInput}
+                          onChange={(e) => setNisInput(e.target.value)}
+                          className="w-full p-4 bg-white/80 border-2 border-emerald-100 rounded-2xl text-sm font-black tracking-[0.2em] text-emerald-950 focus:outline-none focus:border-emerald-600 focus:bg-white font-mono text-center transition-all"
+                        />
+                      </div>
 
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black rounded-2xl text-sm shadow-xl hover:shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 cursor-pointer mt-4 uppercase tracking-widest border-none"
-                    >
-                      <CheckCircle2 className="w-5 h-5 text-yellow-400" />
-                      Cek Saldo
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsQrScannerOpen(true)}
-                      className="w-full py-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-black rounded-2xl text-sm shadow-xl hover:shadow-teal-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 cursor-pointer mt-3 uppercase tracking-widest border-none"
-                    >
-                      <QrCode className="w-5 h-5 text-emerald-300" />
-                      Cek dengan QR Tabungan
-                    </button>
-                  </form>
+                      {/* Submit Button */}
+                      <button
+                        type="submit"
+                        className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black rounded-2xl text-sm shadow-xl hover:shadow-emerald-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 cursor-pointer mt-4 uppercase tracking-widest border-none"
+                      >
+                        <CheckCircle2 className="w-5 h-5 text-yellow-400" />
+                        Cek Saldo
+                      </button>
+                    </form>
+                  )}
                 </div>
 
                 {/* Right Column: Informative Board / Registration CTA */}
