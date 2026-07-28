@@ -86,10 +86,10 @@ export default function StudentImport({
           });
 
           const rowNis = normalizedRow['nis'] || '';
-          const rowName = normalizedRow['nama'] || normalizedRow['name'] || '';
+          const rowName = normalizedRow['nama'] || normalizedRow['name'] || normalizedRow['nama lengkap'] || normalizedRow['nama_lengkap'] || '';
           const rowClass = normalizedRow['kelas'] || normalizedRow['class'] || '';
           const rowDorm = normalizedRow['asrama'] || normalizedRow['dorm'] || '';
-          const rowPhone = normalizedRow['no wali'] || normalizedRow['no_wali'] || normalizedRow['wali'] || '';
+          const rowPhone = normalizedRow['no wali'] || normalizedRow['no_wali'] || normalizedRow['wali'] || normalizedRow['no. wa wali'] || normalizedRow['no_wa_wali'] || normalizedRow['no. wa'] || normalizedRow['no. hp'] || normalizedRow['no hp'] || '';
 
           const rowErrors: string[] = [];
 
@@ -119,9 +119,7 @@ export default function StudentImport({
             }
           }
 
-          if (!rowDorm) {
-            rowErrors.push('Asrama wajib diisi');
-          } else {
+          if (rowDorm && rowDorm !== '-') {
             const matchedDorm = dormsList.find(d => d.toLowerCase() === rowDorm.toLowerCase());
             if (!matchedDorm) {
               rowErrors.push(`Asrama "${rowDorm}" tidak terdaftar di sistem`);
@@ -141,8 +139,8 @@ export default function StudentImport({
             nis: rowNis,
             name: rowName,
             className: normalizedRow.matchedClass || rowClass,
-            dorm: normalizedRow.matchedDorm || rowDorm,
-            guardianPhone: rowPhone || '-',
+            dorm: normalizedRow.matchedDorm || (rowDorm === '-' ? '' : rowDorm),
+            guardianPhone: rowPhone === '-' ? '' : (rowPhone || '-'),
             errors: rowErrors
           });
         });

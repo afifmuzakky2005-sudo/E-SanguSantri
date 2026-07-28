@@ -54,7 +54,13 @@ export function parseWaTransactionTemplate(
     dateStyle: 'medium',
     timeStyle: 'short'
   });
-  const formattedNominal = 'Rp ' + transaction.netAmount.toLocaleString('id-ID');
+  
+  let formattedNominal = 'Rp ' + transaction.netAmount.toLocaleString('id-ID');
+  if (transaction.type === 'Tarik' && transaction.adminFee && transaction.adminFee > 0) {
+    const totalTerpotong = Math.max(transaction.amount, (transaction.netAmount || 0) + (transaction.adminFee || 0));
+    formattedNominal = `Rp ${transaction.netAmount.toLocaleString('id-ID')} (Dana Bersih ditarik)\n*Biaya Admin & Layanan :* Rp ${transaction.adminFee.toLocaleString('id-ID')}\n*Total Saldo Terpotong :* Rp ${totalTerpotong.toLocaleString('id-ID')}`;
+  }
+  
   const buktiText = transaction.type === 'Setor' ? 'BUKTI SETOR DANA' : 'BUKTI PENARIKAN DANA';
 
   const baseTemplate = template || `*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan :* {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
@@ -398,7 +404,7 @@ export const printReceipt = (transaction: Transaction, santri: Santri, instituti
               <div class="amount-row-divider"></div>
               <div class="amount-row">
                 <span class="amount-label">Total Saldo Terpotong</span>
-                <span class="amount-value font-montserrat">Rp ${transaction.amount.toLocaleString('id-ID')}</span>
+                <span class="amount-value font-montserrat">Rp ${Math.max(transaction.amount, (transaction.netAmount || 0) + (transaction.adminFee || 0)).toLocaleString('id-ID')}</span>
               </div>
             ` : `
               <div class="amount-row">

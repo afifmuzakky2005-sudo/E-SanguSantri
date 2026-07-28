@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, X, AlertCircle } from 'lucide-react';
+import { Camera, X, AlertCircle, SwitchCamera } from 'lucide-react';
 
 interface QrScannerModalProps {
   isOpen: boolean;
@@ -13,6 +13,9 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
   const [isInitializing, setIsInitializing] = useState(true);
   const [isMirrored, setIsMirrored] = useState(() => {
     return localStorage.getItem('esangu_scanner_mirrored') === 'true';
+  });
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>(() => {
+    return (localStorage.getItem('esangu_scanner_facing_mode') as 'environment' | 'user') || 'environment';
   });
   const qrCodeRef = useRef<Html5Qrcode | null>(null);
   const elementId = "camera-qr-reader";
@@ -38,7 +41,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
         qrCodeRef.current = scanner;
 
         scanner.start(
-          { facingMode: "environment" },
+          { facingMode: facingMode },
           {
             fps: 15,
             qrbox: (width, height) => {
@@ -86,7 +89,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
         }
       }
     };
-  }, [isOpen]);
+  }, [isOpen, facingMode]);
 
   if (!isOpen) return null;
 
@@ -175,25 +178,49 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({ isOpen, onClose,
             </div>
           )}
           
-          {/* CAMERA MIRROR SWITCH */}
+          {/* CAMERA MIRROR & SWITCH CONTROLS */}
           {!error && !isInitializing && (
-            <div className="flex items-center justify-between w-full max-w-[240px] px-3 py-2 bg-emerald-50/60 rounded-xl border border-emerald-100/40">
-              <div className="flex flex-col text-left">
-                <span className="text-[9px] font-black text-emerald-950 uppercase tracking-wider">Mirror Kamera</span>
-                <span className="text-[7px] text-gray-400 font-bold">Membalik tampilan secara horizontal</span>
+            <div className="flex flex-col gap-2 w-full max-w-[240px]">
+              {/* Mirror Toggle */}
+              <div className="flex items-center justify-between w-full px-3 py-2 bg-emerald-50/60 rounded-xl border border-emerald-100/40">
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-black text-emerald-950 uppercase tracking-wider">Mirror Kamera</span>
+                  <span className="text-[7px] text-gray-400 font-bold">Membalik tampilan secara horizontal</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newVal = !isMirrored;
+                    setIsMirrored(newVal);
+                    localStorage.setItem('esangu_scanner_mirrored', String(newVal));
+                  }}
+                  className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isMirrored ? 'bg-emerald-600' : 'bg-gray-200'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isMirrored ? 'translate-x-3.5' : 'translate-x-0'}`}
+                  />
+                </button>
               </div>
+
+              {/* Switch Camera Button */}
               <button
                 type="button"
                 onClick={() => {
-                  const newVal = !isMirrored;
-                  setIsMirrored(newVal);
-                  localStorage.setItem('esangu_scanner_mirrored', String(newVal));
+                  const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+                  setFacingMode(nextMode);
+                  localStorage.setItem('esangu_scanner_facing_mode', nextMode);
                 }}
-                className={`relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isMirrored ? 'bg-emerald-600' : 'bg-gray-200'}`}
+                className="flex items-center justify-between w-full px-3 py-2 bg-emerald-50/60 hover:bg-emerald-100/60 rounded-xl border border-emerald-100/40 transition-all cursor-pointer text-left"
               >
-                <span
-                  className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isMirrored ? 'translate-x-3.5' : 'translate-x-0'}`}
-                />
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black text-emerald-950 uppercase tracking-wider">Ganti Kamera</span>
+                  <span className="text-[7px] text-gray-400 font-bold">
+                    {facingMode === 'environment' ? 'Kamera Belakang' : 'Kamera Depan'}
+                  </span>
+                </div>
+                <div className="p-1 bg-white rounded-lg border border-emerald-100 text-emerald-700 shadow-sm">
+                  <SwitchCamera className="w-3.5 h-3.5" />
+                </div>
               </button>
             </div>
           )}

@@ -234,42 +234,109 @@ export default function Transactions({
       return;
     }
 
-    const txData = {
-      santriId: selectedStudent.id,
-      santriName: selectedStudent.name,
-      santriClass: selectedStudent.className,
-      date: transactionDateTime.split('T')[0],
-      type: 'Setor' as const,
-      accountType: setorAccount,
-      amount: setorAmount,
-      adminFee: 0,
-      netAmount: setorAmount,
-      note: setorNote.trim() || '-',
-      cashierName: cashierName,
-      signatureName: '',
-      timestamp: new Date(transactionDateTime).toISOString(),
-      paymentMethod: setorPaymentMethod,
-      bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
-      accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
-      transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
-    };
+    const limitAmt = financialSettings.maxDepositAmount || 500000;
 
-    const completedTx = onAddTransaction(txData);
+    if (setorAccount === 'Penitipan' && setorAmount > limitAmt) {
+      const firstAmount = limitAmt;
+      const secondAmount = setorAmount - limitAmt;
 
-    if (prefilled && prefilled.registrationId) {
-      if (onConfirmDeposit) {
-        onConfirmDeposit(prefilled.registrationId);
+      const txData1 = {
+        santriId: selectedStudent.id,
+        santriName: selectedStudent.name,
+        santriClass: selectedStudent.className,
+        date: transactionDateTime.split('T')[0],
+        type: 'Setor' as const,
+        accountType: 'Penitipan' as const,
+        amount: firstAmount,
+        adminFee: 0,
+        netAmount: firstAmount,
+        note: (setorNote.trim() && setorNote.trim() !== '-') ? `${setorNote.trim()} (Maksimal nominal penitipan)` : 'Setoran Penitipan (Maksimal nominal)',
+        cashierName: cashierName,
+        signatureName: '',
+        timestamp: new Date(transactionDateTime).toISOString(),
+        paymentMethod: setorPaymentMethod,
+        bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
+        accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
+        transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
+      };
+
+      const dateObj = new Date(transactionDateTime);
+      dateObj.setSeconds(dateObj.getSeconds() + 1);
+
+      const txData2 = {
+        santriId: selectedStudent.id,
+        santriName: selectedStudent.name,
+        santriClass: selectedStudent.className,
+        date: transactionDateTime.split('T')[0],
+        type: 'Setor' as const,
+        accountType: 'Tabungan' as const,
+        amount: secondAmount,
+        adminFee: 0,
+        netAmount: secondAmount,
+        note: 'Uang lebih dari penitipan (Otomatis masuk tabungan)',
+        cashierName: cashierName,
+        signatureName: '',
+        timestamp: dateObj.toISOString(),
+        paymentMethod: setorPaymentMethod,
+        bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
+        accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
+        transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
+      };
+
+      const completedTx1 = onAddTransaction(txData1);
+      const completedTx2 = onAddTransaction(txData2);
+
+      if (prefilled && prefilled.registrationId) {
+        if (onConfirmDeposit) {
+          onConfirmDeposit(prefilled.registrationId);
+        }
+        if (onClearPrefilled) {
+          onClearPrefilled();
+        }
       }
-      if (onClearPrefilled) {
-        onClearPrefilled();
+
+      setSuccessModalData({
+        tx: completedTx1,
+        student: selectedStudent,
+        splitTx: completedTx2
+      });
+    } else {
+      const txData = {
+        santriId: selectedStudent.id,
+        santriName: selectedStudent.name,
+        santriClass: selectedStudent.className,
+        date: transactionDateTime.split('T')[0],
+        type: 'Setor' as const,
+        accountType: setorAccount,
+        amount: setorAmount,
+        adminFee: 0,
+        netAmount: setorAmount,
+        note: setorNote.trim() || '-',
+        cashierName: cashierName,
+        signatureName: '',
+        timestamp: new Date(transactionDateTime).toISOString(),
+        paymentMethod: setorPaymentMethod,
+        bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
+        accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
+        transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
+      };
+
+      const completedTx = onAddTransaction(txData);
+
+      if (prefilled && prefilled.registrationId) {
+        if (onConfirmDeposit) {
+          onConfirmDeposit(prefilled.registrationId);
+        }
+        if (onClearPrefilled) {
+          onClearPrefilled();
+        }
       }
+
+      setSuccessModalData({
+        tx: completedTx,
+        student: selectedStudent
+      });
     }
-
-    // Set success modal data to trigger pop up
-    setSuccessModalData({
-      tx: completedTx,
-      student: selectedStudent
-    });
 
     // Reset Form
     setSetorAmount(0);
@@ -331,35 +398,88 @@ export default function Transactions({
       }
     }
 
-    const txData = {
-      santriId: selectedStudent.id,
-      santriName: selectedStudent.name,
-      santriClass: selectedStudent.className,
-      date: transactionDateTime.split('T')[0],
-      type: 'Tarik' as const,
-      accountType: tarikAccount,
-      amount: tarikAmount,
-      adminFee: finalFee,
-      netAmount: tarikAmount - finalFee,
-      note: finalFee > 0
-        ? ((tarikNote.trim() && tarikNote.trim() !== '-') ? `${tarikNote.trim()} (biaya admin dan layanan aplikasi)` : 'biaya admin dan layanan aplikasi')
-        : (tarikNote.trim() || '-'),
-      cashierName: cashierName,
-      signatureName: withdrawerName || selectedStudent.name,
-      timestamp: new Date(transactionDateTime).toISOString(),
-      paymentMethod: tarikPaymentMethod,
-      bankName: tarikPaymentMethod === 'Transfer' ? tarikBankName : undefined,
-      accountInfo: tarikPaymentMethod === 'Transfer' ? tarikAccountInfo : undefined,
-      transferReceiptUrl: tarikPaymentMethod === 'Transfer' ? tarikReceipt : undefined
-    };
+    if (finalFee > 0) {
+      const netAmountVal = tarikAmount - finalFee;
 
-    const completedTx = onAddTransaction(txData);
+      const txDataMain = {
+        santriId: selectedStudent.id,
+        santriName: selectedStudent.name,
+        santriClass: selectedStudent.className,
+        date: transactionDateTime.split('T')[0],
+        type: 'Tarik' as const,
+        accountType: tarikAccount,
+        amount: netAmountVal,
+        adminFee: finalFee,
+        netAmount: netAmountVal,
+        note: (tarikNote.trim() && tarikNote.trim() !== '-') ? `${tarikNote.trim()} (Nominal ditarik)` : 'Penarikan Dana (Nominal ditarik)',
+        cashierName: cashierName,
+        signatureName: withdrawerName || selectedStudent.name,
+        timestamp: new Date(transactionDateTime).toISOString(),
+        paymentMethod: tarikPaymentMethod,
+        bankName: tarikPaymentMethod === 'Transfer' ? tarikBankName : undefined,
+        accountInfo: tarikPaymentMethod === 'Transfer' ? tarikAccountInfo : undefined,
+        transferReceiptUrl: tarikPaymentMethod === 'Transfer' ? tarikReceipt : undefined
+      };
 
-    // Set success modal data to trigger pop up
-    setSuccessModalData({
-      tx: completedTx,
-      student: selectedStudent
-    });
+      const dateObj = new Date(transactionDateTime);
+      dateObj.setSeconds(dateObj.getSeconds() + 1);
+
+      const txDataFee = {
+        santriId: selectedStudent.id,
+        santriName: selectedStudent.name,
+        santriClass: selectedStudent.className,
+        date: transactionDateTime.split('T')[0],
+        type: 'Tarik' as const,
+        accountType: tarikAccount,
+        amount: finalFee,
+        adminFee: 0,
+        netAmount: finalFee,
+        note: 'Potongan biaya admin & layanan aplikasi',
+        cashierName: cashierName,
+        signatureName: withdrawerName || selectedStudent.name,
+        timestamp: dateObj.toISOString(),
+        paymentMethod: tarikPaymentMethod,
+        bankName: tarikPaymentMethod === 'Transfer' ? tarikBankName : undefined,
+        accountInfo: tarikPaymentMethod === 'Transfer' ? tarikAccountInfo : undefined,
+        transferReceiptUrl: tarikPaymentMethod === 'Transfer' ? tarikReceipt : undefined
+      };
+
+      const completedTx1 = onAddTransaction(txDataMain);
+      const completedTx2 = onAddTransaction(txDataFee);
+
+      setSuccessModalData({
+        tx: completedTx1,
+        student: selectedStudent,
+        splitTx: completedTx2
+      });
+    } else {
+      const txData = {
+        santriId: selectedStudent.id,
+        santriName: selectedStudent.name,
+        santriClass: selectedStudent.className,
+        date: transactionDateTime.split('T')[0],
+        type: 'Tarik' as const,
+        accountType: tarikAccount,
+        amount: tarikAmount,
+        adminFee: 0,
+        netAmount: tarikAmount,
+        note: tarikNote.trim() || '-',
+        cashierName: cashierName,
+        signatureName: withdrawerName || selectedStudent.name,
+        timestamp: new Date(transactionDateTime).toISOString(),
+        paymentMethod: tarikPaymentMethod,
+        bankName: tarikPaymentMethod === 'Transfer' ? tarikBankName : undefined,
+        accountInfo: tarikPaymentMethod === 'Transfer' ? tarikAccountInfo : undefined,
+        transferReceiptUrl: tarikPaymentMethod === 'Transfer' ? tarikReceipt : undefined
+      };
+
+      const completedTx = onAddTransaction(txData);
+
+      setSuccessModalData({
+        tx: completedTx,
+        student: selectedStudent
+      });
+    }
 
     // Reset Form
     setTarikAmount(0);
@@ -1160,14 +1280,31 @@ export default function Transactions({
             <div className="space-y-2">
               <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Transaksi Berhasil!</h3>
               <p className="text-xs text-gray-500 font-bold">
-                {successModalData.tx.type === 'Setor' ? 'Setoran' : 'Penarikan'} sejumlah <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> untuk santri <span className="text-gray-900 font-extrabold">{successModalData.student.name}</span> telah sukses diproses.
+                {successModalData.splitTx ? (
+                  successModalData.tx.type === 'Setor' ? (
+                    <>
+                      Setoran utama <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> (Penitipan) & kelebihan <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis disalurkan ke <span className="text-gray-900 font-extrabold">Tabungan</span> (Uang lebih dari penitipan).
+                    </>
+                  ) : (
+                    <>
+                      Penarikan sebesar <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount + successModalData.splitTx.amount)}</span> sukses diproses: <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> diterima santri & <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis terpotong untuk biaya admin.
+                    </>
+                  )
+                ) : (
+                  <>
+                    {successModalData.tx.type === 'Setor' ? 'Setoran' : 'Penarikan'} sejumlah <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> untuk santri <span className="text-gray-900 font-extrabold">{successModalData.student.name}</span> telah sukses diproses.
+                  </>
+                )}
               </p>
             </div>
 
             <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-50/50 text-left text-xs font-semibold space-y-2.5">
               <div className="flex justify-between">
                 <span className="text-gray-400 font-bold">ID Transaksi</span>
-                <span className="font-mono font-extrabold text-emerald-800">{formatTxId(successModalData.tx.id, transactions)}</span>
+                <span className="font-mono font-extrabold text-emerald-800">
+                  {formatTxId(successModalData.tx.id, transactions)}
+                  {successModalData.splitTx && ` & ${formatTxId(successModalData.splitTx.id, transactions)}`}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400 font-bold">Santri</span>
@@ -1179,7 +1316,10 @@ export default function Transactions({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400 font-bold">Jenis Akun</span>
-                <span className="text-gray-800 font-extrabold">{successModalData.tx.accountType}</span>
+                <span className="text-gray-800 font-extrabold">
+                  {successModalData.tx.accountType}
+                  {successModalData.splitTx && successModalData.tx.type === 'Setor' && ' + Tabungan'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400 font-bold">Kasir</span>
@@ -1227,6 +1367,11 @@ export default function Transactions({
                 type="button"
                 onClick={() => {
                   printReceipt(successModalData.tx, successModalData.student, institution, transactions);
+                  if (successModalData.splitTx && successModalData.tx.type === 'Setor') {
+                    setTimeout(() => {
+                      printReceipt(successModalData.splitTx!, successModalData.student, institution, transactions);
+                    }, 800);
+                  }
                 }}
                 className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-900/20 active:scale-95 transition flex items-center justify-center gap-2 border-none cursor-pointer"
               >
@@ -1242,13 +1387,23 @@ export default function Transactions({
                     return;
                   }
                   const templateText = institution.waTemplateTransaction || '';
-                  const parsedMsg = parseWaTransactionTemplate(
+                  let parsedMsg = parseWaTransactionTemplate(
                     templateText,
                     successModalData.tx,
                     successModalData.student,
                     institution,
                     transactions
                   );
+                  if (successModalData.splitTx) {
+                    const parsedSplit = parseWaTransactionTemplate(
+                      templateText,
+                      successModalData.splitTx,
+                      successModalData.student,
+                      institution,
+                      transactions
+                    );
+                    parsedMsg += `\n\n*Transaksi Tambahan (Kelebihan)*:\n` + parsedSplit;
+                  }
                   const waUrl = getWhatsAppLink(successModalData.student.guardianPhone, parsedMsg);
                   window.open(waUrl, '_blank');
                 }}

@@ -230,10 +230,10 @@ export default function StudentManagement({
           });
 
           const rowNis = normalizedRow['nis'] || '';
-          const rowName = normalizedRow['nama'] || normalizedRow['name'] || '';
+          const rowName = normalizedRow['nama'] || normalizedRow['name'] || normalizedRow['nama lengkap'] || normalizedRow['nama_lengkap'] || '';
           const rowClass = normalizedRow['kelas'] || normalizedRow['class'] || '';
           const rowDorm = normalizedRow['asrama'] || normalizedRow['dorm'] || '';
-          const rowPhone = normalizedRow['no wali'] || normalizedRow['no_wali'] || normalizedRow['wali'] || '';
+          const rowPhone = normalizedRow['no wali'] || normalizedRow['no_wali'] || normalizedRow['wali'] || normalizedRow['no. wa wali'] || normalizedRow['no_wa_wali'] || normalizedRow['no. wa'] || normalizedRow['no. hp'] || normalizedRow['no hp'] || '';
 
           const rowErrors: string[] = [];
 
@@ -262,7 +262,7 @@ export default function StudentManagement({
             }
           }
 
-          if (rowDorm) {
+          if (rowDorm && rowDorm !== '-') {
             const matchedDorm = (institution.dorms || []).find(d => d.toLowerCase() === rowDorm.toLowerCase());
             if (!matchedDorm) {
               rowErrors.push(`Asrama "${rowDorm}" tidak terdaftar di pengaturan`);
@@ -282,8 +282,8 @@ export default function StudentManagement({
             nis: rowNis,
             name: rowName,
             className: normalizedRow.matchedClass || rowClass,
-            dorm: normalizedRow.matchedDorm || rowDorm,
-            guardianPhone: rowPhone || '-',
+            dorm: normalizedRow.matchedDorm || (rowDorm === '-' ? '' : rowDorm),
+            guardianPhone: rowPhone === '-' ? '' : (rowPhone || '-'),
             errors: rowErrors
           });
         });

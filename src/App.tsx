@@ -285,7 +285,7 @@ export default function App() {
     const nextTx: Transaction = {
       ...newTx,
       note: newTx.note ? (newTx.note.trim() || '-') : '-',
-      id: 'tx_' + Date.now().toString(),
+      id: 'tx_' + Date.now().toString() + '_' + Math.floor(Math.random() * 1000000).toString(),
       timestamp: newTx.timestamp || new Date().toISOString()
     };
     const updated = [nextTx, ...transactions];
