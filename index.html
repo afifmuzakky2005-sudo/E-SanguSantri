@@ -7,10 +7,16 @@
         const origError = console.error;
         console.error = function(...args) {
           if (typeof args[0] === 'string' && args[0].includes('[vite]')) {
-            console.debug(...args);
             return;
           }
           origError.apply(console, args);
+        };
+        const origWarn = console.warn;
+        console.warn = function(...args) {
+          if (typeof args[0] === 'string' && args[0].includes('[vite]')) {
+            return;
+          }
+          origWarn.apply(console, args);
         };
       })();
     </script>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Santri, Transaction, InstitutionSettings } from '../types';
-import { Search, Printer, Filter, Download, MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Eye, X, Image } from 'lucide-react';
+import { Search, Printer, Filter, Download, MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Eye, X, Image, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { printReceipt, formatTxId, parseWaTransactionTemplate, getWhatsAppLink } from '../lib/printHelper';
 
 interface MutasiKasProps {
@@ -8,13 +8,17 @@ interface MutasiKasProps {
   transactions: Transaction[];
   institution: InstitutionSettings;
   cashierName: string;
+  currentUserRole?: string;
+  onDeleteTransaction?: (txId: string) => void;
 }
 
 export default function MutasiKas({
   students = [],
   transactions = [],
   institution,
-  cashierName
+  cashierName,
+  currentUserRole,
+  onDeleteTransaction
 }: MutasiKasProps) {
   const [histSearch, setHistSearch] = useState('');
   const [histType, setHistType] = useState<string>('Semua');
@@ -22,6 +26,10 @@ export default function MutasiKas({
   const [histStartDate, setHistStartDate] = useState('');
   const [histEndDate, setHistEndDate] = useState('');
   const [selectedReceiptTx, setSelectedReceiptTx] = useState<Transaction | null>(null);
+  const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
+
+  const isMaster = (currentUserRole || '').trim().toLowerCase() === 'master';
 
   // Sorting state
   const [sortField, setSortField] = useState<'timestamp' | 'id' | 'santriName' | 'accountType' | 'type' | 'amount' | 'adminFee' | 'netAmount' | 'note'>('timestamp');
@@ -485,6 +493,17 @@ export default function MutasiKas({
                           >
                             <MessageSquare className="w-4 h-4" />
                           </button>
+
+                          {isMaster && onDeleteTransaction && (
+                            <button 
+                              type="button"
+                              onClick={() => setTxToDelete(tx)}
+                              className="p-2 text-rose-600 hover:bg-rose-100 rounded-xl transition cursor-pointer border-none bg-transparent animate-in fade-in zoom-in"
+                              title="Hapus Transaksi (Khusus Master)"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -595,6 +614,117 @@ export default function MutasiKas({
                </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS TRANSAKSI (KHUSUS MASTER) */}
+      {txToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md overflow-hidden border border-rose-100 shadow-2xl relative flex flex-col transform animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-gradient-to-r from-rose-900 to-rose-950 text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-rose-800/80 rounded-xl text-rose-200 shadow-inner">
+                  <AlertTriangle className="w-5 h-5 text-rose-300" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Konfirmasi Hapus Transaksi</h3>
+                  <p className="text-[10px] text-rose-200 font-bold">Otoritas Master • Ref: {formatTxId(txToDelete.id, safeTransactions)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTxToDelete(null)}
+                className="p-1.5 hover:bg-rose-800 rounded-full transition border-none bg-transparent cursor-pointer text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-rose-50/60 border border-rose-100 rounded-2xl space-y-2 text-xs">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Santri:</span>
+                  <span className="font-black text-rose-950 uppercase">{txToDelete.santriName || 'Santri'} ({txToDelete.santriClass || '-'})</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Jenis Akun / Aliran:</span>
+                  <span className="font-black text-rose-900">{txToDelete.accountType} • {txToDelete.type}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Nominal:</span>
+                  <span className="font-mono font-black text-rose-700 text-sm">{formatCurrency(txToDelete.amount)}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Waktu Transaksi:</span>
+                  <span className="font-mono text-gray-700">{formatDateTime(txToDelete.timestamp, txToDelete.date)}</span>
+                </div>
+                {txToDelete.note && (
+                  <div className="pt-2 border-t border-rose-100 text-[10px] text-gray-600 italic">
+                    Catatan: &ldquo;{txToDelete.note}&rdquo;
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 font-medium flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Perhatian:</strong> Menghapus transaksi ini akan membatalkan riwayat mutasi kas dan menyesuaikan kalkulasi saldo santri secara otomatis. Tindakan ini tidak dapat diurungkan.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-4 border-t border-gray-100 bg-slate-50 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTxToDelete(null)}
+                className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-xl border border-slate-200 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (txToDelete && onDeleteTransaction) {
+                    const deletedSantri = txToDelete.santriName || 'Santri';
+                    const deletedAmount = txToDelete.amount || 0;
+                    onDeleteTransaction(txToDelete.id);
+                    setTxToDelete(null);
+                    setDeleteSuccessMsg(`Transaksi ${deletedSantri} senilai ${formatCurrency(deletedAmount)} berhasil dihapus dari sistem.`);
+                    setTimeout(() => {
+                      setDeleteSuccessMsg(null);
+                    }, 4000);
+                  }
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition shadow-md shadow-rose-900/20 cursor-pointer border-none flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Ya, Hapus Transaksi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST PEMBERITAHUAN SUKSES HAPUS */}
+      {deleteSuccessMsg && (
+        <div className="fixed bottom-6 right-6 z-[9999] bg-emerald-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-800/80 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="p-1.5 bg-emerald-800 text-emerald-300 rounded-lg">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wider text-emerald-300">Transaksi Dihapus</p>
+            <p className="text-[11px] text-gray-200 font-medium">{deleteSuccessMsg}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDeleteSuccessMsg(null)}
+            className="ml-2 text-gray-400 hover:text-white transition border-none bg-transparent cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

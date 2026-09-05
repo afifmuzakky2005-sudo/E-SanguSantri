@@ -60,6 +60,7 @@ interface AdminPanelProps {
   onDeleteStudent: (id: string) => void;
   onBulkDeleteStudents?: (ids: string[]) => void;
   onAddTransaction: (t: Omit<Transaction, 'id' | 'timestamp'> & { timestamp?: string }) => Transaction;
+  onDeleteTransaction?: (id: string) => void;
   onSaveInstitution: (inst: InstitutionSettings) => void;
   onSaveFinancial: (fin: FinancialSettings) => void;
   onAddUser: (u: Omit<User, 'id'>) => void;
@@ -94,6 +95,7 @@ export default function AdminPanel({
   onDeleteStudent,
   onBulkDeleteStudents,
   onAddTransaction,
+  onDeleteTransaction,
   onSaveInstitution,
   onSaveFinancial,
   onAddUser,
@@ -886,6 +888,8 @@ export default function AdminPanel({
             institutionClasses={institution.classes}
             registrations={registrations}
             onDeleteRegistration={onDeleteRegistration}
+            currentUserRole={currentUser?.role}
+            onDeleteTransaction={onDeleteTransaction}
           />
         )}
 
@@ -932,6 +936,8 @@ export default function AdminPanel({
               transactions={transactions || []}
               institution={institution}
               cashierName={currentUser?.name || 'Petugas'}
+              currentUserRole={currentUser?.role}
+              onDeleteTransaction={onDeleteTransaction}
             />
           </ErrorBoundary>
         )}

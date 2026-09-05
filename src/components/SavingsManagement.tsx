@@ -21,6 +21,8 @@ interface SavingsManagementProps {
   institutionClasses?: string[];
   registrations?: PendingRegistration[];
   onDeleteRegistration?: (regId: string) => void;
+  currentUserRole?: string;
+  onDeleteTransaction?: (txId: string) => void;
 }
 
 export default function SavingsManagement({
@@ -35,7 +37,9 @@ export default function SavingsManagement({
   onBulkActivateSavings,
   institutionClasses = [],
   registrations = [],
-  onDeleteRegistration
+  onDeleteRegistration,
+  currentUserRole,
+  onDeleteTransaction
 }: SavingsManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState('Semua');
@@ -53,6 +57,9 @@ export default function SavingsManagement({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteConfirmWithBalanceId, setDeleteConfirmWithBalanceId] = useState<string | null>(null);
   const [isBulkDeleteConfirm, setIsBulkDeleteConfirm] = useState(false);
+  const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
+  
+  const isMaster = (currentUserRole || '').trim().toLowerCase() === 'master';
   
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
@@ -876,6 +883,7 @@ export default function SavingsManagement({
                           <th className="px-4 py-2 text-right">Saldo</th>
                           <th className="px-4 py-2">Admin / Petugas</th>
                           <th className="px-4 py-2">Keterangan</th>
+                          {isMaster && onDeleteTransaction && <th className="px-3 py-2 text-center">Aksi</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-teal-50 font-bold">
@@ -905,10 +913,22 @@ export default function SavingsManagement({
                                   )}
                                 </div>
                               </td>
+                              {isMaster && onDeleteTransaction && (
+                                <td className="px-3 py-2 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setTxToDelete(tx)}
+                                    className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition border-none bg-transparent cursor-pointer"
+                                    title="Hapus Transaksi (Khusus Master)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))
                         ) : (
-                          <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi tabungan</td></tr>
+                          <tr><td colSpan={isMaster && onDeleteTransaction ? 8 : 7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi tabungan</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1035,6 +1055,7 @@ export default function SavingsManagement({
                           <th className="px-4 py-2 text-right">Saldo</th>
                           <th className="px-4 py-2">Admin / Petugas</th>
                           <th className="px-4 py-2">Keterangan</th>
+                          {isMaster && onDeleteTransaction && <th className="px-3 py-2 text-center">Aksi</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-emerald-50 font-bold">
@@ -1064,10 +1085,22 @@ export default function SavingsManagement({
                                   )}
                                 </div>
                               </td>
+                              {isMaster && onDeleteTransaction && (
+                                <td className="px-3 py-2 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setTxToDelete(tx)}
+                                    className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition border-none bg-transparent cursor-pointer"
+                                    title="Hapus Transaksi (Khusus Master)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))
                         ) : (
-                          <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi penitipan</td></tr>
+                          <tr><td colSpan={isMaster && onDeleteTransaction ? 8 : 7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi penitipan</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1488,6 +1521,91 @@ export default function SavingsManagement({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS TRANSAKSI MUTASI (KHUSUS MASTER) */}
+      {txToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md overflow-hidden border border-rose-100 shadow-2xl relative flex flex-col transform animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-gradient-to-r from-rose-900 to-rose-950 text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-rose-800/80 rounded-xl text-rose-200 shadow-inner">
+                  <Trash2 className="w-5 h-5 text-rose-300" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Konfirmasi Hapus Transaksi</h3>
+                  <p className="text-[10px] text-rose-200 font-bold">Otoritas Master • Ref: {formatTxId(txToDelete.id, transactions)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTxToDelete(null)}
+                className="p-1.5 hover:bg-rose-800 rounded-full transition border-none bg-transparent cursor-pointer text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="p-4 bg-rose-50/60 border border-rose-100 rounded-2xl space-y-2 text-xs">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Santri:</span>
+                  <span className="font-black text-rose-950 uppercase">{txToDelete.santriName || 'Santri'}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Jenis Akun:</span>
+                  <span className="font-black text-rose-900">{txToDelete.accountType} • {txToDelete.type}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Nominal:</span>
+                  <span className="font-mono font-black text-rose-700 text-sm">Rp{(txToDelete.amount || 0).toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-gray-500 font-medium">Waktu Transaksi:</span>
+                  <span className="font-mono text-gray-700">{new Date(txToDelete.timestamp).toLocaleString('id-ID')}</span>
+                </div>
+                {txToDelete.note && (
+                  <div className="pt-2 border-t border-rose-100 text-[10px] text-gray-600 italic">
+                    Catatan: &ldquo;{txToDelete.note}&rdquo;
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 font-medium flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Perhatian:</strong> Menghapus mutasi ini akan mengoreksi kembali saldo santri dan riwayat mutasi kas secara otomatis.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-4 border-t border-gray-100 bg-slate-50 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTxToDelete(null)}
+                className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-xl border border-slate-200 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (txToDelete && onDeleteTransaction) {
+                    onDeleteTransaction(txToDelete.id);
+                    setTxToDelete(null);
+                  }
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition shadow-md shadow-rose-900/20 cursor-pointer border-none flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                Ya, Hapus Transaksi
+              </button>
+            </div>
           </div>
         </div>
       )}

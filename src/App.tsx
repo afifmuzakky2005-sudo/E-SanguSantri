@@ -325,6 +325,24 @@ export default function App() {
     return nextTx;
   };
 
+  const handleDeleteTransaction = (txId: string) => {
+    const txToDelete = transactions.find(t => t.id === txId);
+    if (!txToDelete) return;
+
+    const updatedTxs = transactions.filter(t => t.id !== txId);
+    setTransactions(updatedTxs);
+    
+    // Cache inside localStorage
+    localStorage.setItem('esangu_transactions', JSON.stringify(updatedTxs));
+
+    // Delete in Firebase Firestore
+    deleteFirebaseDocument('transactions', txId);
+
+    if (loggedInAdmin) {
+      addLog(loggedInAdmin.name, loggedInAdmin.role, 'Hapus Transaksi', `Menghapus transaksi ${txToDelete.type} ${txToDelete.accountType} sebesar Rp${txToDelete.amount} untuk santri ${txToDelete.santriName}`);
+    }
+  };
+
   const handleSaveInstitution = (updatedInst: InstitutionSettings) => {
     setInstitution(updatedInst);
     updateAppFavicon(updatedInst.logoUrl, updatedInst.name);
@@ -656,6 +674,7 @@ export default function App() {
                 onDeleteStudent={handleDeleteStudent}
                 onBulkDeleteStudents={handleBulkDeleteStudents}
                 onAddTransaction={handleAddTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
                 onSaveInstitution={handleSaveInstitution}
                 onSaveFinancial={handleSaveFinancial}
                 onAddUser={handleAddUser}
