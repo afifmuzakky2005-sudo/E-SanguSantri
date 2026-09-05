@@ -145,13 +145,14 @@ export default function App() {
     loadData();
   }, []);
 
-  // Synchronize browser tab title and favicon
+  // Synchronize browser tab title and favicon dynamically
   useEffect(() => {
-    document.title = 'E-Sangu Santri';
+    const instName = institution?.name?.trim();
+    document.title = instName ? `E-SanguSantri - ${instName}` : 'E-SanguSantri';
     if (institution?.logoUrl) {
       updateAppFavicon(institution.logoUrl);
     }
-  }, [institution?.logoUrl]);
+  }, [institution?.name, institution?.logoUrl]);
 
   const addLog = (user: string, role: string, action: string, details: string) => {
     const newLog = {
@@ -197,21 +198,7 @@ export default function App() {
     if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Impor Santri', `Menambahkan ${nextStudents.length} santri baru dari Excel`);
   };
 
-  // Update Favicon and Title dynamically
-  useEffect(() => {
-    if (institution) {
-      document.title = institution.name || 'E-Sangu Santri';
-      
-      // Favicon update
-      if (institution.logoUrl) {
-        const link: HTMLLinkElement = document.querySelector("link[rel*='icon']") || document.createElement('link');
-        link.type = 'image/x-icon';
-        link.rel = 'shortcut icon';
-        link.href = institution.logoUrl;
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-    }
-  }, [institution]);
+
 
   const handleDeactivateSavings = (id: string) => {
     const updatedStudent = students.find(s => s.id === id);
