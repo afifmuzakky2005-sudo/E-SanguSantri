@@ -1,0 +1,44 @@
+{
+  "id": "/",
+  "name": "E-SanguSantri - Pondok Pesantren",
+  "short_name": "E-SanguSantri",
+  "description": "Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#ffffff",
+  "theme_color": "#047857",
+  "lang": "id",
+  "orientation": "portrait",
+  "prefer_related_applications": false,
+  "categories": [
+    "finance",
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

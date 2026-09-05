@@ -26,6 +26,125 @@ function ensureDir(dirPath: string) {
   }
 }
 
+// Helper to remove outer white background (flood fill) if image is surrounded by white
+async function removeOuterWhiteBuffer(inputBuffer: Buffer): Promise<Buffer> {
+  try {
+    const img = sharp(inputBuffer);
+    const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
+    const { width, height, channels } = info;
+
+    function isBorderWhite(x: number, y: number) {
+      const idx = (y * width + x) * channels;
+      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+      return r >= 220 && g >= 220 && b >= 220;
+    }
+
+    let perimeterWhiteCount = 0;
+    const totalPerimeter = width * 2 + height * 2;
+    for (let x = 0; x < width; x++) {
+      if (isBorderWhite(x, 0)) perimeterWhiteCount++;
+      if (isBorderWhite(x, height - 1)) perimeterWhiteCount++;
+    }
+    for (let y = 0; y < height; y++) {
+      if (isBorderWhite(0, y)) perimeterWhiteCount++;
+      if (isBorderWhite(width - 1, y)) perimeterWhiteCount++;
+    }
+
+    const isWhiteBg = (perimeterWhiteCount / totalPerimeter) > 0.5;
+    if (!isWhiteBg && channels === 4) {
+      return inputBuffer;
+    }
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const maxR = Math.min(width, height) * 0.45;
+
+    const visited = new Uint8Array(width * height);
+    const queue: number[] = [];
+
+    function isBg(x: number, y: number) {
+      const idx = (y * width + x) * channels;
+      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+      const dist = Math.hypot(x - cx, y - cy);
+      if (dist > maxR * 1.05) {
+        return r > 190 && g > 190 && b > 190;
+      }
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      if (dist > maxR * 0.95) {
+        return (r > 220 && g > 220 && b > 220) || (sat < 0.12 && max > 210);
+      }
+      return false;
+    }
+
+    for (let x = 0; x < width; x++) {
+      if (isBg(x, 0)) { queue.push(x, 0); visited[0 * width + x] = 1; }
+      if (isBg(x, height - 1)) { queue.push(x, height - 1); visited[(height - 1) * width + x] = 1; }
+    }
+    for (let y = 0; y < height; y++) {
+      if (isBg(0, y) && !visited[y * width + 0]) { queue.push(0, y); visited[y * width + 0] = 1; }
+      if (isBg(width - 1, y) && !visited[y * width + width - 1]) { queue.push(width - 1, y); visited[y * width + width - 1] = 1; }
+    }
+
+    let head = 0;
+    while (head < queue.length) {
+      const x = queue[head++];
+      const y = queue[head++];
+      const neighbors = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+      for (const [nx, ny] of neighbors) {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = ny * width + nx;
+          if (!visited[nIdx] && isBg(nx, ny)) {
+            visited[nIdx] = 1;
+            queue.push(nx, ny);
+          }
+        }
+      }
+    }
+
+    const rgba = Buffer.alloc(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const srcIdx = (y * width + x) * channels;
+        const dstIdx = (y * width + x) * 4;
+        if (visited[y * width + x]) {
+          rgba[dstIdx] = 0;
+          rgba[dstIdx + 1] = 0;
+          rgba[dstIdx + 2] = 0;
+          rgba[dstIdx + 3] = 0;
+        } else {
+          rgba[dstIdx] = data[srcIdx];
+          rgba[dstIdx + 1] = data[srcIdx + 1];
+          rgba[dstIdx + 2] = data[srcIdx + 2];
+
+          let bgNeighborCount = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height && visited[ny * width + nx]) {
+                bgNeighborCount++;
+              }
+            }
+          }
+          if (bgNeighborCount > 0) {
+            const brightness = (data[srcIdx] + data[srcIdx + 1] + data[srcIdx + 2]) / 3;
+            rgba[dstIdx + 3] = brightness > 220 ? Math.max(40, Math.round(255 - (brightness - 220) * 6)) : 255;
+          } else {
+            rgba[dstIdx + 3] = channels === 4 ? data[srcIdx + 3] : 255;
+          }
+        }
+      }
+    }
+
+    return await sharp(rgba, { raw: { width, height, channels: 4 } }).png().toBuffer();
+  } catch (err) {
+    console.error('removeOuterWhiteBuffer fallback:', err);
+    return inputBuffer;
+  }
+}
+
 // Helper to build Web App Manifest
 function generateManifestObject(instName?: string) {
   const cleanName = instName && instName.trim().length > 0 ? instName.trim() : 'Pondok Pesantren';
@@ -38,7 +157,7 @@ function generateManifestObject(instName?: string) {
     scope: '/',
     display: 'standalone',
     display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
-    background_color: '#047857',
+    background_color: '#ffffff',
     theme_color: '#047857',
     lang: 'id',
     orientation: 'portrait',
@@ -61,7 +180,7 @@ function generateManifestObject(instName?: string) {
         src: '/pwa-maskable-512x512.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'maskable'
+        purpose: 'any maskable'
       }
     ]
   };
@@ -146,57 +265,76 @@ app.post('/api/update-pwa-icon', async (req, res) => {
       }
     }
 
+    // Clean image: remove outer white background and trim so the emblem is optical & transparent
+    const transparentImage = await removeOuterWhiteBuffer(imageBuffer);
+    const trimmedImage = await sharp(transparentImage).trim().toBuffer();
+
     // 1. Generate 192x192 standard icon (purpose: 'any')
-    const icon192 = await sharp(imageBuffer)
-      .resize(192, 192, {
+    const icon192 = await sharp(trimmedImage)
+      .resize(176, 176, {
         fit: 'contain',
-        background: { r: 4, g: 120, b: 87, alpha: 0 } // Transparent background
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
-      .png()
-      .toBuffer();
-
-    // 2. Generate 512x512 standard icon (purpose: 'any')
-    const icon512 = await sharp(imageBuffer)
-      .resize(512, 512, {
-        fit: 'contain',
-        background: { r: 4, g: 120, b: 87, alpha: 0 }
-      })
-      .png()
-      .toBuffer();
-
-    // 3. Generate 512x512 maskable icon (purpose: 'maskable')
-    // Safe zone is inner 80% circle (radius 40% = 368px) to prevent Android adaptive icon cropping
-    const innerMaskable = await sharp(imageBuffer)
-      .resize(360, 360, {
-        fit: 'contain',
+      .extend({
+        top: 8,
+        bottom: 8,
+        left: 8,
+        right: 8,
         background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
       .png()
       .toBuffer();
 
-    const iconMaskable = await sharp({
-      create: {
-        width: 512,
-        height: 512,
-        channels: 4,
-        background: { r: 4, g: 120, b: 87, alpha: 1 } // Theme color emerald #047857
-      }
-    })
-      .composite([{ input: innerMaskable, gravity: 'center' }])
-      .png()
-      .toBuffer();
-
-    // 4. Generate Apple Touch Icon (180x180) and Favicon (32x32)
-    const iconApple = await sharp(imageBuffer)
-      .resize(180, 180, {
+    // 2. Generate 512x512 standard icon (purpose: 'any')
+    const icon512 = await sharp(trimmedImage)
+      .resize(464, 464, {
         fit: 'contain',
-        background: { r: 4, g: 120, b: 87, alpha: 1 }
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .extend({
+        top: 24,
+        bottom: 24,
+        left: 24,
+        right: 24,
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
       .png()
       .toBuffer();
 
-    const iconFavicon = await sharp(imageBuffer)
-      .resize(32, 32, {
+    // 3. Generate 512x512 maskable icon (purpose: 'any maskable') with safe-zone margin and transparent background
+    const iconMaskable = await sharp(trimmedImage)
+      .resize(384, 384, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .extend({
+        top: 64,
+        bottom: 64,
+        left: 64,
+        right: 64,
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .png()
+      .toBuffer();
+
+    // 4. Generate Apple Touch Icon (180x180) and Favicon (48x48) with transparent background
+    const iconApple = await sharp(trimmedImage)
+      .resize(164, 164, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .extend({
+        top: 8,
+        bottom: 8,
+        left: 8,
+        right: 8,
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .png()
+      .toBuffer();
+
+    const iconFavicon = await sharp(trimmedImage)
+      .resize(48, 48, {
         fit: 'contain',
         background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
