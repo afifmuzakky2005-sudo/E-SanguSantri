@@ -1,6 +1,19 @@
 <!doctype html>
 <html lang="id">
   <head>
+    <script>
+      // Filter out benign [vite] websocket connection warnings in sandboxed preview iframe
+      (function() {
+        const origError = console.error;
+        console.error = function(...args) {
+          if (typeof args[0] === 'string' && args[0].includes('[vite]')) {
+            console.debug(...args);
+            return;
+          }
+          origError.apply(console, args);
+        };
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>E-SanguSantri - Pondok Pesantren</title>
@@ -28,7 +41,7 @@
   </head>
   <body class="overscroll-none select-none md:select-auto">
     <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 

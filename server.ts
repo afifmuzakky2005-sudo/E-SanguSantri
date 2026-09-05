@@ -4,6 +4,11 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import sharp from 'sharp';
 
+// Normalize global.__dirname if set to '.' by tsx/esbuild to prevent createRequire('.') in ESM tools
+if (typeof (global as any).__dirname === 'string' && (global as any).__dirname === '.') {
+  (global as any).__dirname = process.cwd();
+}
+
 const app = express();
 const PORT = 3000;
 
@@ -454,7 +459,7 @@ app.get('/favicon.png', (req, res, next) => {
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);

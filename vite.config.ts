@@ -26,7 +26,7 @@ export default defineConfig(() => {
           short_name: 'E-SanguSantri',
           description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
           theme_color: '#047857',
-          background_color: '#047857',
+          background_color: '#ffffff',
           display: 'standalone',
           display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
           orientation: 'portrait',
@@ -51,7 +51,7 @@ export default defineConfig(() => {
               src: '/pwa-maskable-512x512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'maskable',
+              purpose: 'any maskable',
             },
           ],
         },
@@ -94,20 +94,19 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
+          enabled: false,
         },
       }),
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(process.cwd(), '.'),
       },
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
+      hmr: false,
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
