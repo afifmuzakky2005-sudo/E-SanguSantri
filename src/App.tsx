@@ -326,7 +326,7 @@ export default function App() {
 
   const handleSaveInstitution = (updatedInst: InstitutionSettings) => {
     setInstitution(updatedInst);
-    updateAppFavicon(updatedInst.logoUrl);
+    updateAppFavicon(updatedInst.logoUrl, updatedInst.name);
     saveFirebaseData({ institution: updatedInst });
   };
 
