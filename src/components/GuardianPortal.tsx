@@ -8,6 +8,7 @@ import { AllocationPieChart } from './VisualCharts';
 import { QrScannerModal } from './QrScannerModal';
 import { InlineQrScanner } from './InlineQrScanner';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { PWAInstallPrompt } from './PWAInstallBanner';
 
 interface GuardianPortalProps {
   students: Santri[];
@@ -346,41 +347,44 @@ export default function GuardianPortal({
     <div className="w-full flex-1 flex flex-col justify-between font-sans bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 z-10 relative">
       
       {/* Top Banner Header */}
-      <header className="bg-white/40 backdrop-blur-xl border-b border-emerald-100 shadow-sm text-emerald-950 relative z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-lg bg-white text-emerald-900 font-black flex items-center justify-center shadow-lg text-xl overflow-hidden shrink-0">
+      <header className="bg-white/60 backdrop-blur-xl border-b border-emerald-100 shadow-sm text-emerald-950 relative z-10">
+        <div className="max-w-6xl mx-auto px-3.5 py-3 md:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/80 text-emerald-900 font-black flex items-center justify-center shadow-md text-base md:text-xl overflow-hidden shrink-0 border border-emerald-100/60">
               {institution.logoUrl ? (
-                <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-cover bg-white" />
+                <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" />
               ) : (
                 'S'
               )}
             </div>
-            <div>
-              <h1 className="font-black text-lg tracking-tighter uppercase leading-none">
+            <div className="min-w-0">
+              <h1 className="font-black text-base md:text-lg tracking-tighter uppercase leading-none truncate">
                 <span className="text-gray-900">E</span><span className="text-emerald-500 font-black">-</span><span className="text-gray-900">SANGU</span> <span className="text-emerald-500">SANTRI</span>
               </h1>
-              <p className="text-[10px] text-emerald-800 font-extrabold uppercase tracking-widest mt-0.5">{institution.name || 'PONDOK PESANTREN'}</p>
+              <p className="text-[9px] md:text-[10px] text-emerald-800 font-extrabold uppercase tracking-wider mt-0.5 truncate max-w-[170px] sm:max-w-xs">{institution.name || 'PONDOK PESANTREN'}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
+            <PWAInstallPrompt variant="compact" />
+
             {!loggedInStudent && (
               <button
                 onClick={onAdminLoginClick}
-                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-900/20 cursor-pointer flex items-center gap-2"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-900/20 cursor-pointer flex items-center gap-1.5"
               >
                 <KeyRound className="w-3.5 h-3.5 text-yellow-400" />
-                Login Admin
+                <span className="hidden sm:inline">Login Admin</span>
+                <span className="sm:hidden">Admin</span>
               </button>
             )}
             {loggedInStudent && (
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-white/70 hover:bg-red-50 hover:text-red-700 text-red-600 font-bold text-xs rounded-xl transition border border-red-200 cursor-pointer shadow-sm flex items-center gap-1.5"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-white/70 hover:bg-red-50 hover:text-red-700 text-red-600 font-bold text-xs rounded-xl transition border border-red-200 cursor-pointer shadow-sm flex items-center gap-1.5"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                Keluar Portal
+                <span>Keluar</span>
               </button>
             )}
           </div>
@@ -610,18 +614,26 @@ export default function GuardianPortal({
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {institution.phone && (
                       <a 
                         href={`https://wa.me/${institution.phone.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full py-3 bg-white text-emerald-900 font-black rounded-2xl text-[10px] uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm border border-emerald-200"
+                        className="w-full py-3.5 bg-white text-emerald-900 font-black rounded-2xl text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm border border-emerald-200"
                       >
-                        <MessageSquare className="w-3.5 h-3.5" />
+                        <MessageSquare className="w-4 h-4 text-emerald-700" />
                         Hubungi Admin
                       </a>
                     )}
+
+                    {/* Tombol Instal Aplikasi (Terpisah, warna hijau seperti tombol Login Admin) */}
+                    <PWAInstallPrompt
+                      variant="button"
+                      showAlways={true}
+                      label="Instal Aplikasi"
+                      className="w-full !py-3.5 !rounded-2xl !text-xs !shadow-lg !shadow-emerald-900/20"
+                    />
                   </div>
                 </div>
               </div>

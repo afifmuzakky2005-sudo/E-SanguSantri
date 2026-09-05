@@ -3,7 +3,8 @@ import { Santri, Transaction, FinancialSettings, AccountType, InstitutionSetting
 import { calculateBalances } from '../data/mockData';
 import { Search, CircleDollarSign, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, ShieldAlert, CheckCircle, FileText, X, ChevronRight, History, Receipt, ArrowRight, MessageSquare, Camera } from 'lucide-react';
 import { printReceipt, parseWaTransactionTemplate, getWhatsAppLink, formatTxId } from '../lib/printHelper';
-import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
+import { playSetorSound, playTarikSound, playSuccessSound, playErrorSound } from '../lib/soundHelper';
+import { motion, AnimatePresence } from 'motion/react';
 import { QrScannerModal } from './QrScannerModal';
 
 interface TransactionsProps {
@@ -273,7 +274,7 @@ export default function Transactions({
         amount: secondAmount,
         adminFee: 0,
         netAmount: secondAmount,
-        note: 'Uang lebih dari penitipan (Otomatis masuk tabungan)',
+        note: `sisa uang penitipan melebihi batas Rp ${limitAmt.toLocaleString('id-ID')}`,
         cashierName: cashierName,
         signatureName: '',
         timestamp: dateObj.toISOString(),
@@ -295,6 +296,7 @@ export default function Transactions({
         }
       }
 
+      playSetorSound();
       setSuccessModalData({
         tx: completedTx1,
         student: selectedStudent,
@@ -332,6 +334,7 @@ export default function Transactions({
         }
       }
 
+      playSetorSound();
       setSuccessModalData({
         tx: completedTx,
         student: selectedStudent
@@ -411,7 +414,7 @@ export default function Transactions({
         amount: netAmountVal,
         adminFee: finalFee,
         netAmount: netAmountVal,
-        note: (tarikNote.trim() && tarikNote.trim() !== '-') ? `${tarikNote.trim()} (Nominal ditarik)` : 'Penarikan Dana (Nominal ditarik)',
+        note: (tarikNote.trim() && tarikNote.trim() !== '-') ? tarikNote.trim() : 'pengambilan tabungan',
         cashierName: cashierName,
         signatureName: withdrawerName || selectedStudent.name,
         timestamp: new Date(transactionDateTime).toISOString(),
@@ -420,9 +423,6 @@ export default function Transactions({
         accountInfo: tarikPaymentMethod === 'Transfer' ? tarikAccountInfo : undefined,
         transferReceiptUrl: tarikPaymentMethod === 'Transfer' ? tarikReceipt : undefined
       };
-
-      const dateObj = new Date(transactionDateTime);
-      dateObj.setSeconds(dateObj.getSeconds() + 1);
 
       const txDataFee = {
         santriId: selectedStudent.id,
@@ -434,10 +434,10 @@ export default function Transactions({
         amount: finalFee,
         adminFee: 0,
         netAmount: finalFee,
-        note: 'Potongan biaya admin & layanan aplikasi',
+        note: 'biaya admin dan layanan aplikasi',
         cashierName: cashierName,
         signatureName: withdrawerName || selectedStudent.name,
-        timestamp: dateObj.toISOString(),
+        timestamp: new Date(transactionDateTime).toISOString(),
         paymentMethod: tarikPaymentMethod,
         bankName: tarikPaymentMethod === 'Transfer' ? tarikBankName : undefined,
         accountInfo: tarikPaymentMethod === 'Transfer' ? tarikAccountInfo : undefined,
@@ -447,6 +447,7 @@ export default function Transactions({
       const completedTx1 = onAddTransaction(txDataMain);
       const completedTx2 = onAddTransaction(txDataFee);
 
+      playTarikSound();
       setSuccessModalData({
         tx: completedTx1,
         student: selectedStudent,
@@ -475,6 +476,7 @@ export default function Transactions({
 
       const completedTx = onAddTransaction(txData);
 
+      playTarikSound();
       setSuccessModalData({
         tx: completedTx,
         student: selectedStudent
@@ -1270,160 +1272,267 @@ export default function Transactions({
           </div>
         </div>
 
-      {successModalData && (
-        <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] w-full max-w-md p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300">
-            <div className="mx-auto w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-10 h-10" />
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Transaksi Berhasil!</h3>
-              <p className="text-xs text-gray-500 font-bold">
-                {successModalData.splitTx ? (
-                  successModalData.tx.type === 'Setor' ? (
-                    <>
-                      Setoran utama <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> (Penitipan) & kelebihan <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis disalurkan ke <span className="text-gray-900 font-extrabold">Tabungan</span> (Uang lebih dari penitipan).
-                    </>
+      <AnimatePresence>
+        {successModalData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-emerald-950/40 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="bg-white rounded-[32px] w-full max-w-md p-6 border border-emerald-100 shadow-2xl space-y-5 text-center relative overflow-hidden my-auto"
+            >
+              {/* Background celebratory particles */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: [0, 1.8, 0], opacity: [0, 0.4, 0] }}
+                  transition={{ duration: 1.2, ease: 'easeOut' }}
+                  className={`absolute -top-10 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full ${
+                    successModalData.tx.type === 'Setor' ? 'bg-emerald-300' : 'bg-amber-300'
+                  } blur-2xl`}
+                />
+                {[...Array(10)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ y: 0, x: 0, opacity: 1, scale: 0.8 }}
+                    animate={{
+                      y: [0, -70 - (i * 8)],
+                      x: [(i % 2 === 0 ? 1 : -1) * (20 + (i * 7))],
+                      opacity: [1, 0.8, 0],
+                      scale: [0.8, 1.2, 0.2],
+                    }}
+                    transition={{ duration: 0.9 + (i * 0.08), ease: 'easeOut', delay: i * 0.04 }}
+                    className={`absolute top-1/3 left-1/2 w-2.5 h-2.5 rounded-full ${
+                      i % 3 === 0
+                        ? (successModalData.tx.type === 'Setor' ? 'bg-emerald-500' : 'bg-amber-500')
+                        : i % 3 === 1
+                        ? 'bg-blue-500'
+                        : 'bg-green-400'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Animated Icon with Pulsing Outer Ring */}
+              <div className="relative mx-auto w-20 h-20 flex items-center justify-center pt-2">
+                <motion.div
+                  initial={{ scale: 0, rotate: -30 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 20, delay: 0.1 }}
+                  className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg relative z-10 ${
+                    successModalData.tx.type === 'Setor'
+                      ? 'bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white shadow-emerald-600/30'
+                      : 'bg-gradient-to-tr from-blue-600 to-amber-500 text-white shadow-blue-600/30'
+                  }`}
+                >
+                  <CheckCircle className="w-10 h-10" />
+                </motion.div>
+
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0.8 }}
+                  animate={{ scale: 1.6, opacity: 0 }}
+                  transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 0.8 }}
+                  className={`absolute inset-0 rounded-2xl border-2 ${
+                    successModalData.tx.type === 'Setor' ? 'border-emerald-500' : 'border-amber-500'
+                  }`}
+                />
+              </div>
+
+              {/* Title & Badge */}
+              <div className="space-y-1.5 relative z-10">
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18 }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    successModalData.tx.type === 'Setor'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {successModalData.tx.type === 'Setor' ? '✨ Setoran Berhasil' : '💸 Penarikan Berhasil'}
+                </motion.div>
+                <motion.h3
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.22 }}
+                  className="text-xl font-black text-gray-900 uppercase tracking-tight"
+                >
+                  Transaksi Berhasil!
+                </motion.h3>
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.26 }}
+                  className="text-xs text-gray-500 font-bold px-2"
+                >
+                  {successModalData.splitTx ? (
+                    successModalData.tx.type === 'Setor' ? (
+                      <>
+                        Setoran utama <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> (Penitipan) & kelebihan <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis disalurkan ke <span className="text-gray-900 font-extrabold">Tabungan</span> (sisa uang penitipan melebihi batas).
+                      </>
+                    ) : (
+                      <>
+                        Penarikan sebesar <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount + successModalData.splitTx.amount)}</span> sukses diproses: <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> diterima santri & <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis terpotong untuk biaya admin.
+                      </>
+                    )
                   ) : (
                     <>
-                      Penarikan sebesar <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount + successModalData.splitTx.amount)}</span> sukses diproses: <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> diterima santri & <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis terpotong untuk biaya admin.
+                      {successModalData.tx.type === 'Setor' ? 'Setoran' : 'Penarikan'} sejumlah <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> untuk santri <span className="text-gray-900 font-extrabold">{successModalData.student.name}</span> telah sukses diproses.
                     </>
-                  )
-                ) : (
+                  )}
+                </motion.p>
+              </div>
+
+              {/* Summary Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100 text-left text-xs font-semibold space-y-2.5 relative z-10"
+              >
+                <div className="flex justify-between">
+                  <span className="text-gray-400 font-bold">ID Transaksi</span>
+                  <span className="font-mono font-extrabold text-emerald-800">
+                    {formatTxId(successModalData.tx.id, transactions)}
+                    {successModalData.splitTx && ` & ${formatTxId(successModalData.splitTx.id, transactions)}`}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 font-bold">Santri</span>
+                  <span className="text-gray-800 font-extrabold uppercase">{successModalData.student.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 font-bold">Wali Santri</span>
+                  <span className="text-gray-800 font-extrabold">{successModalData.student.guardianPhone || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 font-bold">Jenis Akun</span>
+                  <span className="text-gray-800 font-extrabold">
+                    {successModalData.tx.accountType}
+                    {successModalData.splitTx && successModalData.tx.type === 'Setor' && ' + Tabungan'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 font-bold">Kasir</span>
+                  <span className="text-gray-800 font-extrabold">{successModalData.tx.cashierName}</span>
+                </div>
+                {successModalData.tx.paymentMethod && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 font-bold">Metode Pembayaran</span>
+                    <span className="text-gray-800 font-extrabold">{successModalData.tx.paymentMethod}</span>
+                  </div>
+                )}
+                {successModalData.tx.paymentMethod === 'Transfer' && (
                   <>
-                    {successModalData.tx.type === 'Setor' ? 'Setoran' : 'Penarikan'} sejumlah <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> untuk santri <span className="text-gray-900 font-extrabold">{successModalData.student.name}</span> telah sukses diproses.
+                    {successModalData.tx.bankName && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400 font-bold">Bank</span>
+                        <span className="text-gray-800 font-extrabold uppercase">{successModalData.tx.bankName}</span>
+                      </div>
+                    )}
+                    {successModalData.tx.accountInfo && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400 font-bold">Rekening</span>
+                        <span className="text-gray-800 font-extrabold">{successModalData.tx.accountInfo}</span>
+                      </div>
+                    )}
+                    {successModalData.tx.transferReceiptUrl && (
+                      <div className="flex flex-col gap-1.5 pt-1">
+                        <span className="text-gray-400 font-bold text-left block">Bukti Transfer:</span>
+                        <div className="w-full h-32 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center relative">
+                          <img
+                            src={successModalData.tx.transferReceiptUrl}
+                            alt="Bukti Transfer"
+                            className="max-w-full max-h-full object-contain"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
-              </p>
-            </div>
+              </motion.div>
 
-            <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-50/50 text-left text-xs font-semibold space-y-2.5">
-              <div className="flex justify-between">
-                <span className="text-gray-400 font-bold">ID Transaksi</span>
-                <span className="font-mono font-extrabold text-emerald-800">
-                  {formatTxId(successModalData.tx.id, transactions)}
-                  {successModalData.splitTx && ` & ${formatTxId(successModalData.splitTx.id, transactions)}`}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400 font-bold">Santri</span>
-                <span className="text-gray-800 font-extrabold uppercase">{successModalData.student.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400 font-bold">Wali Santri</span>
-                <span className="text-gray-800 font-extrabold">{successModalData.student.guardianPhone || '-'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400 font-bold">Jenis Akun</span>
-                <span className="text-gray-800 font-extrabold">
-                  {successModalData.tx.accountType}
-                  {successModalData.splitTx && successModalData.tx.type === 'Setor' && ' + Tabungan'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400 font-bold">Kasir</span>
-                <span className="text-gray-800 font-extrabold">{successModalData.tx.cashierName}</span>
-              </div>
-              {successModalData.tx.paymentMethod && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400 font-bold">Metode Pembayaran</span>
-                  <span className="text-gray-800 font-extrabold">{successModalData.tx.paymentMethod}</span>
-                </div>
-              )}
-              {successModalData.tx.paymentMethod === 'Transfer' && (
-                <>
-                  {successModalData.tx.bankName && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400 font-bold">Bank</span>
-                      <span className="text-gray-800 font-extrabold uppercase">{successModalData.tx.bankName}</span>
-                    </div>
-                  )}
-                  {successModalData.tx.accountInfo && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-400 font-bold">Rekening</span>
-                      <span className="text-gray-800 font-extrabold">{successModalData.tx.accountInfo}</span>
-                    </div>
-                  )}
-                  {successModalData.tx.transferReceiptUrl && (
-                    <div className="flex flex-col gap-1.5 pt-1">
-                      <span className="text-gray-400 font-bold text-left block">Bukti Transfer:</span>
-                      <div className="w-full h-32 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center relative">
-                        <img
-                          src={successModalData.tx.transferReceiptUrl}
-                          alt="Bukti Transfer"
-                          className="max-w-full max-h-full object-contain"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  printReceipt(successModalData.tx, successModalData.student, institution, transactions);
-                  if (successModalData.splitTx && successModalData.tx.type === 'Setor') {
-                    setTimeout(() => {
-                      printReceipt(successModalData.splitTx!, successModalData.student, institution, transactions);
-                    }, 800);
-                  }
-                }}
-                className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-900/20 active:scale-95 transition flex items-center justify-center gap-2 border-none cursor-pointer"
+              {/* Action Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="flex flex-col sm:flex-row gap-3 relative z-10"
               >
-                <Printer className="w-4 h-4" />
-                Cetak Bukti
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  if (!successModalData.student.guardianPhone || successModalData.student.guardianPhone === '-') {
-                    alert('Nomor HP Wali Santri tidak valid / belum diinput.');
-                    return;
-                  }
-                  const templateText = institution.waTemplateTransaction || '';
-                  let parsedMsg = parseWaTransactionTemplate(
-                    templateText,
-                    successModalData.tx,
-                    successModalData.student,
-                    institution,
-                    transactions
-                  );
-                  if (successModalData.splitTx) {
-                    const parsedSplit = parseWaTransactionTemplate(
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
+                  type="button"
+                  onClick={() => {
+                    printReceipt(successModalData.tx, successModalData.student, institution, transactions);
+                    if (successModalData.splitTx && successModalData.tx.type === 'Setor') {
+                      setTimeout(() => {
+                        printReceipt(successModalData.splitTx!, successModalData.student, institution, transactions);
+                      }, 800);
+                    }
+                  }}
+                  className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition flex items-center justify-center gap-2 border-none cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  Cetak Bukti
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
+                  type="button"
+                  onClick={() => {
+                    if (!successModalData.student.guardianPhone || successModalData.student.guardianPhone === '-') {
+                      alert('Nomor HP Wali Santri tidak valid / belum diinput.');
+                      return;
+                    }
+                    const templateText = institution.waTemplateTransaction || '';
+                    let parsedMsg = parseWaTransactionTemplate(
                       templateText,
-                      successModalData.splitTx,
+                      successModalData.tx,
                       successModalData.student,
                       institution,
                       transactions
                     );
-                    parsedMsg += `\n\n*Transaksi Tambahan (Kelebihan)*:\n` + parsedSplit;
-                  }
-                  const waUrl = getWhatsAppLink(successModalData.student.guardianPhone, parsedMsg);
-                  window.open(waUrl, '_blank');
-                }}
-                className="flex-1 py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-green-900/20 active:scale-95 transition flex items-center justify-center gap-2 border-none cursor-pointer"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Konfirmasi WA
-              </button>
-            </div>
+                    if (successModalData.splitTx && successModalData.tx.type === 'Setor') {
+                      const splitId = formatTxId(successModalData.splitTx.id, transactions);
+                      parsedMsg += `\n\n*Mutasi Otomatis Tabungan (Sisa Uang Penitipan)*:\n` +
+                        `• ID Transaksi: ${splitId}\n` +
+                        `• Akun: Tabungan\n` +
+                        `• Nominal: Rp ${successModalData.splitTx.amount.toLocaleString('id-ID')}\n` +
+                        `• Keterangan: ${successModalData.splitTx.note || 'sisa uang penitipan'}`;
+                    }
+                    const waUrl = getWhatsAppLink(successModalData.student.guardianPhone, parsedMsg);
+                    window.open(waUrl, '_blank');
+                  }}
+                  className="flex-1 py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-green-900/20 transition flex items-center justify-center gap-2 border-none cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Konfirmasi WA
+                </motion.button>
+              </motion.div>
 
-            <button
-              type="button"
-              onClick={() => setSuccessModalData(null)}
-              className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-extrabold uppercase tracking-widest active:scale-95 transition border-none cursor-pointer"
-            >
-              Tutup
-            </button>
-          </div>
-        </div>
-      )}
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                onClick={() => setSuccessModalData(null)}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-extrabold uppercase tracking-widest transition border-none cursor-pointer relative z-10"
+              >
+                Tutup
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {isCameraOpen && (
         <QrScannerModal

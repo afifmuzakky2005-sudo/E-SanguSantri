@@ -13,6 +13,7 @@ import RegistrationManagement from './RegistrationManagement';
 import StudentImport from './StudentImport';
 import ActivityLogView from './ActivityLogView';
 import { QrGeneratifView } from './QrGeneratifView';
+import { PWAInstallPrompt } from './PWAInstallBanner';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
@@ -371,7 +372,7 @@ export default function AdminPanel({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans relative overflow-hidden">
+    <div className="fixed inset-0 md:static md:min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans overflow-hidden z-20">
       
       {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
@@ -392,14 +393,14 @@ export default function AdminPanel({
           {/* Brand Panel */}
           <div className="p-5 bg-emerald-900 flex items-center justify-between border-b border-emerald-800">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white flex items-center justify-center font-black text-emerald-900 text-xl shadow-sm border border-emerald-700 overflow-hidden shrink-0 rounded-lg">
-                {institution.logoUrl ? <img src={institution.logoUrl} className="w-full h-full object-cover bg-white" /> : 'S'}
+              <div className="w-12 h-12 bg-white/10 flex items-center justify-center font-black text-white text-xl shadow-sm border border-emerald-700/60 overflow-hidden shrink-0 rounded-xl backdrop-blur-sm">
+                {institution.logoUrl ? <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" /> : 'S'}
               </div>
               <div>
                 <h1 className="font-black text-lg tracking-tighter uppercase leading-none">
                   <span className="text-white">E</span><span className="text-yellow-400 font-black">-</span><span className="text-white">SANGU</span> <span className="text-yellow-400">SANTRI</span>
                 </h1>
-                <p className="text-[10px] text-emerald-300 font-extrabold tracking-wider mt-0.5" title={institution.name}>{institution.name}</p>
+                <p className="text-[10px] text-emerald-300 font-extrabold tracking-wider mt-0.5 truncate max-w-[140px]" title={institution.name}>{institution.name}</p>
               </div>
             </div>
             <button 
@@ -642,30 +643,35 @@ export default function AdminPanel({
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-full md:h-screen overflow-hidden relative">
         
-        {/* MOBILE TOP BAR */}
-        <header className="md:hidden flex items-center justify-start gap-3 p-4 bg-emerald-900 text-white shadow-md z-30">
-          <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 hover:bg-emerald-800 rounded-lg transition border-none cursor-pointer text-white bg-transparent"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center font-black text-emerald-900 text-sm border border-emerald-700 shrink-0 overflow-hidden">
-              {institution.logoUrl ? <img src={institution.logoUrl} className="w-full h-full object-cover bg-white" /> : 'S'}
+        {/* MOBILE TOP BAR (TETAP & TIDAK BERGERAK) */}
+        <header className="md:hidden shrink-0 sticky top-0 flex items-center justify-between gap-2 px-3.5 py-3 bg-emerald-900 text-white shadow-md z-30 select-none">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-1.5 hover:bg-emerald-800 rounded-lg transition border-none cursor-pointer text-white bg-transparent"
+              aria-label="Toggle Menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-black text-white text-xs border border-emerald-700/60 shrink-0 overflow-hidden backdrop-blur-sm">
+              {institution.logoUrl ? <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" /> : 'S'}
             </div>
-            <span className="font-black text-sm tracking-tight uppercase">
-              <span className="text-white md:text-gray-900">E</span>
-              <span className="text-emerald-500">-</span>
-              <span className="text-emerald-400 md:text-gray-900">SANGU</span>{' '}
-              <span className="text-white md:text-emerald-500">SANTRI</span>
+            <span className="font-black text-xs tracking-tight uppercase truncate">
+              <span className="text-white">E</span>
+              <span className="text-emerald-400">-</span>
+              <span className="text-yellow-400">SANGU</span>{' '}
+              <span className="text-white">SANTRI</span>
             </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <PWAInstallPrompt variant="compact" />
           </div>
         </header>
 
-        <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto bg-slate-50">
+        <div className="flex-1 p-4 md:p-8 space-y-6 overflow-y-auto overscroll-contain bg-slate-50 min-h-0">
           
           {/* --- MENU VIEW ROUTER --- */}
 
@@ -1258,6 +1264,92 @@ export default function AdminPanel({
         )}
 
       </div>
+
+        {/* MOBILE BOTTOM NAVIGATION BAR (TETAP & TIDAK BERGERAK) */}
+        <nav 
+          aria-label="Navigasi Cepat Mobile" 
+          className="md:hidden shrink-0 sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-emerald-100/80 flex items-center justify-around py-1.5 px-1 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] select-none"
+        >
+          {/* 1. Dashboard */}
+          <button
+            type="button"
+            onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
+              activeMenu === 'dashboard' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
+            }`}
+          >
+            <div className={`p-1 rounded-lg transition-colors ${activeMenu === 'dashboard' ? 'bg-emerald-100/70 text-emerald-700' : ''}`}>
+              <LayoutDashboard className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] tracking-tight">Dashboard</span>
+          </button>
+
+          {/* 2. Transaksi */}
+          <button
+            type="button"
+            onClick={() => { setActiveMenu('transaksi'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
+              activeMenu === 'transaksi' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
+            }`}
+          >
+            <div className={`p-1 rounded-lg transition-colors ${activeMenu === 'transaksi' ? 'bg-emerald-100/70 text-emerald-700' : ''}`}>
+              <CircleDollarSign className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] tracking-tight">Transaksi</span>
+          </button>
+
+          {/* 3. Riwayat */}
+          <button
+            type="button"
+            onClick={() => { setActiveMenu('riwayat'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
+              activeMenu === 'riwayat' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
+            }`}
+          >
+            <div className={`p-1 rounded-lg transition-colors ${activeMenu === 'riwayat' ? 'bg-emerald-100/70 text-emerald-700' : ''}`}>
+              <RefreshCw className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] tracking-tight">Riwayat</span>
+          </button>
+
+          {/* 4. Santri */}
+          <button
+            type="button"
+            onClick={() => { setActiveMenu('datamaster'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
+              activeMenu === 'datamaster' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
+            }`}
+          >
+            <div className={`p-1 rounded-lg transition-colors ${activeMenu === 'datamaster' ? 'bg-emerald-100/70 text-emerald-700' : ''}`}>
+              <Users className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] tracking-tight">Santri</span>
+          </button>
+
+          {/* 5. Menu */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl relative transition-all active:scale-95 ${
+              isMobileMenuOpen || !['dashboard', 'transaksi', 'riwayat', 'datamaster'].includes(activeMenu)
+                ? 'text-emerald-700 font-black'
+                : 'text-slate-400 hover:text-slate-600 font-bold'
+            }`}
+          >
+            <div className={`p-1 rounded-lg relative transition-colors ${
+              isMobileMenuOpen || !['dashboard', 'transaksi', 'riwayat', 'datamaster'].includes(activeMenu)
+                ? 'bg-emerald-100/70 text-emerald-700'
+                : ''
+            }`}>
+              <Menu className="w-4 h-4" />
+              {registrations.filter(r => r.status === 'Pending').length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              )}
+            </div>
+            <span className="text-[10px] tracking-tight">Menu</span>
+          </button>
+        </nav>
+
         {showLogoutConfirm && (<div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"><div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300"><div className="mx-auto w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center"><LogOut className="w-6 h-6" /></div><div className="space-y-2"><h3 className="text-lg font-black text-emerald-950 uppercase tracking-tight">Konfirmasi Keluar</h3><p className="text-xs text-gray-500 font-bold">Apakah Anda yakin ingin keluar dari sesi admin?</p></div><div className="flex gap-3"><button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-3 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold rounded-xl text-xs transition-colors border-none cursor-pointer uppercase tracking-wider">Batal</button><button onClick={() => { setShowLogoutConfirm(false); onLogout(); }} className="flex-1 py-3 text-white bg-red-600 hover:bg-red-700 font-bold rounded-xl text-xs transition-colors shadow-md shadow-red-200 border-none cursor-pointer uppercase tracking-wider">Ya, Keluar</button></div></div></div>)}
       </main>
 

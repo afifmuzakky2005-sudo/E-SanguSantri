@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { InstitutionSettings, FinancialSettings, User } from '../types';
-import { Save, CheckCircle, Shield, Settings2, HelpCircle, UserPlus, Trash2, BookOpen, Plus, Home, MessageSquare, RefreshCw, AlertTriangle, QrCode } from 'lucide-react';
+import { Save, CheckCircle, Shield, Settings2, HelpCircle, UserPlus, Trash2, BookOpen, Plus, Home, MessageSquare, RefreshCw, AlertTriangle, QrCode, Sparkles } from 'lucide-react';
+import { processTransparentLogo, updateAppFavicon } from '../lib/faviconHelper';
 
 interface SettingsProps {
   institution: InstitutionSettings;
@@ -150,44 +151,18 @@ export default function Settings({
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          const MAX_WIDTH = 500;
-          const MAX_HEIGHT = 500;
-          
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          
-          if (ctx) {
-            // Fill background with white for transparent images like PNG
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            // Compress as JPEG to save space
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            setInstLogo(dataUrl);
+          // Process transparent logo (clears white background, outputs PNG format)
+          const transparentDataUrl = processTransparentLogo(img, true);
+          if (transparentDataUrl) {
+            setInstLogo(transparentDataUrl);
             // Auto-save the logo to institution
             onSaveInstitution({
               ...institution,
-              logoUrl: dataUrl
+              logoUrl: transparentDataUrl
             });
-            triggerSuccess('Logo berhasil diunggah dan disimpan!');
+            // Immediately sync browser tab favicon and touch icons
+            updateAppFavicon(transparentDataUrl);
+            triggerSuccess('Logo transparan berhasil diunggah & dijadikan favicon aplikasi!');
           }
         };
         img.src = event.target?.result as string;
@@ -372,13 +347,27 @@ export default function Settings({
             </div>
 
             <div>
-              <label className="block text-gray-500 font-black mb-1 uppercase tracking-widest text-[10px]">LOGO PONDOK / APLIKASI (Upload)</label>
-              <div className="flex items-center gap-4 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
-                <div className="w-12 h-12 rounded-lg bg-white border border-emerald-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-gray-500 font-black uppercase tracking-widest text-[10px]">LOGO LEMBAGA & FAVICON (Transparan)</label>
+                <span className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Auto-Transparent Favicon
+                </span>
+              </div>
+              <div className="flex items-center gap-4 bg-gray-50/70 p-3 rounded-xl border border-emerald-100">
+                <div 
+                  className="w-14 h-14 rounded-xl border-2 border-dashed border-emerald-300 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative"
+                  style={{
+                    backgroundImage: 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)',
+                    backgroundSize: '10px 10px',
+                    backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px'
+                  }}
+                  title="Pratinjau Logo Transparan"
+                >
                   {instLogo ? (
-                    <img src={instLogo} alt="Logo Preview" className="w-full h-full object-cover" />
+                    <img src={instLogo} alt="Logo Preview" className="w-full h-full object-contain p-1" />
                   ) : (
-                    <span className="text-[10px] text-emerald-300 font-bold">LOGO</span>
+                    <span className="text-[9px] text-emerald-600 font-black">NO LOGO</span>
                   )}
                 </div>
                 <div className="flex-1 space-y-1">
@@ -386,9 +375,11 @@ export default function Settings({
                     type="file"
                     accept="image/*"
                     onChange={handleLogoUpload}
-                    className="block w-full text-[10px] text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-black file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer transition-all"
+                    className="block w-full text-[10px] text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer transition-all"
                   />
-                  <p className="text-[9px] text-gray-400 italic font-medium">* Format: JPG, PNG, atau SVG. Maksimal 1MB recommended.</p>
+                  <p className="text-[9px] text-gray-500 font-medium">
+                    * Background putih otomatis dibersihkan transparan (no background) dan langsung diterapkan sebagai favicon tab browser serta ikon aplikasi PWA.
+                  </p>
                 </div>
               </div>
             </div>
@@ -873,136 +864,7 @@ export default function Settings({
         </div>
       </div>
 
-      {/* SECTION: SETELAN PABRIK */}
-      <div className="bg-rose-50 border border-rose-200 p-6 rounded-2xl space-y-4 shadow-sm animate-in fade-in duration-300">
-        <div className="flex items-center gap-2 pb-2 border-b border-rose-200/50">
-          <RefreshCw className="w-5 h-5 text-rose-600 animate-spin" style={{ animationDuration: '6s' }} />
-          <h3 className="font-extrabold text-rose-950 text-sm uppercase tracking-tight flex items-center gap-2">
-            SETELAN PABRIK & PEMBERSIHAN DATA SISTEM
-          </h3>
-        </div>
-        
-        <div className="space-y-2 text-xs text-rose-900/80">
-          <p className="font-bold">
-            Gunakan fitur ini untuk mengatur titik awal kustom (Baseline Default) atau membersihkan seluruh data sistem untuk memulai tahun ajaran baru secara steril.
-          </p>
-          <ul className="list-disc pl-4 space-y-1 font-medium text-[11px] leading-relaxed">
-            <li><strong>Buat Sebagai Setelan Pabrik:</strong> Menyimpan kondisi santri, saldo, riwayat transaksi, dan settingan saat ini sebagai template default baru.</li>
-            <li><strong>Kembali Ke Setelan Pabrik:</strong> Menghapus seluruh data berjalan, mutasi, log, asrama, kelas, dan settingan. Mengembalikannya ke template default kustom (atau default bawaan sistem jika belum ada kustomisasi).</li>
-          </ul>
-        </div>
 
-        <div className="pt-2 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setShowFactorySaveConfirm(true)}
-            className="px-4 py-2.5 bg-rose-200 hover:bg-rose-300 active:bg-rose-400 text-rose-950 font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border-none flex items-center gap-2"
-          >
-            <Save className="w-4 h-4 text-rose-800" />
-            Buat Ini Sebagai Setelan Pabrik
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setResetPasswordInput('');
-              setResetPasswordError('');
-              setShowResetConfirm(true);
-            }}
-            className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition shadow-md shadow-red-900/10 cursor-pointer border-none flex items-center gap-2"
-          >
-            <Trash2 className="w-4 h-4 text-white" />
-            Kembali ke Setelan Pabrik
-          </button>
-        </div>
-      </div>
-
-      {/* CONFIRM SAVE FACTORY MODAL */}
-      {showFactorySaveConfirm && (
-        <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300">
-            <div className="mx-auto w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 animate-bounce" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-base font-black text-emerald-950 uppercase tracking-tight">Buat Setelan Pabrik Kustom</h3>
-              <p className="text-xs text-gray-500 font-bold leading-relaxed">
-                Apakah Anda yakin ingin menetapkan seluruh data santri, rules keuangan, asrama, kelas, dan akun saat ini sebagai setelan pabrik default kustom pesantren Anda?
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowFactorySaveConfirm(false)}
-                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest transition cursor-pointer border-none"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAsFactoryDefault}
-                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
-              >
-                Ya, Tetapkan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRM RESET SYSTEM MODAL */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-red-950/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-red-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300">
-            <div className="mx-auto w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-red-600 animate-pulse" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-base font-black text-red-950 uppercase tracking-tight">Konfirmasi Pembersihan WIPE</h3>
-              <p className="text-xs text-red-600 font-bold leading-relaxed">
-                PERINGATAN KERAS! Tindakan ini bersifat IRREVERSIBLE (tidak bisa dibatalkan). Semua data, riwayat mutasi tabungan, log keuangan, asrama, kelas, dan settingan akan terhapus total!
-              </p>
-            </div>
-
-            <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest block">
-                Konfirmasi Password Master
-              </label>
-              <input
-                type="password"
-                value={resetPasswordInput}
-                onChange={(e) => {
-                  setResetPasswordInput(e.target.value);
-                  setResetPasswordError('');
-                }}
-                placeholder="Masukkan kata sandi Master..."
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-xs focus:ring-2 focus:ring-red-500 outline-none transition"
-              />
-              {resetPasswordError && (
-                <p className="text-[10px] text-red-600 font-bold mt-1 animate-pulse">
-                  {resetPasswordError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest transition cursor-pointer border-none"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleResetConfirmClick}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-red-900/10 cursor-pointer border-none"
-              >
-                Ya, Hapus Semua
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* DELETE CLASS CONFIRM MODAL */}
       {deleteClassConfirm && (

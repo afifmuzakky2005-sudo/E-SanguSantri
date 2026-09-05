@@ -1,7 +1,39 @@
 import { collection, doc, getDocs, setDoc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, handleFirestoreError, OperationType } from './firebase';
 import { Santri, Transaction, InstitutionSettings, FinancialSettings, User, PendingRegistration } from '../types';
 import { INITIAL_SANTRI, INITIAL_TRANSACTIONS, DEFAULT_INSTITUTION_SETTINGS, DEFAULT_FINANCIAL_SETTINGS, DEFAULT_USERS } from '../data/mockData';
+
+export function getLocalStorageData() {
+  try {
+    const s = localStorage.getItem('esangu_santri');
+    const t = localStorage.getItem('esangu_transactions');
+    const i = localStorage.getItem('esangu_institution');
+    const f = localStorage.getItem('esangu_financial');
+    const u = localStorage.getItem('esangu_users');
+    const r = localStorage.getItem('esangu_registrations');
+    const l = localStorage.getItem('esangu_activityLogs');
+
+    return {
+      santri: s ? JSON.parse(s) : [],
+      transactions: t ? JSON.parse(t) : [],
+      institution: i ? JSON.parse(i) : DEFAULT_INSTITUTION_SETTINGS,
+      financial: f ? JSON.parse(f) : DEFAULT_FINANCIAL_SETTINGS,
+      users: u ? JSON.parse(u) : DEFAULT_USERS,
+      registrations: r ? JSON.parse(r) : [],
+      activityLogs: l ? JSON.parse(l) : [],
+    };
+  } catch {
+    return {
+      santri: [],
+      transactions: [],
+      institution: DEFAULT_INSTITUTION_SETTINGS,
+      financial: DEFAULT_FINANCIAL_SETTINGS,
+      users: DEFAULT_USERS,
+      registrations: [],
+      activityLogs: [],
+    };
+  }
+}
 
 export async function getFirebaseData() {
   try {
@@ -21,7 +53,6 @@ export async function getFirebaseData() {
     let institution: InstitutionSettings;
     if (instDoc.exists()) {
       institution = instDoc.data() as InstitutionSettings;
-      // Merge with defaults for new fields
       institution = { ...DEFAULT_INSTITUTION_SETTINGS, ...institution };
     } else {
       await setDoc(doc(db, 'settings', 'institution'), DEFAULT_INSTITUTION_SETTINGS);
@@ -61,31 +92,35 @@ export async function getFirebaseData() {
     let activityLogs: any[] = [];
     if (!logsSnap.empty) {
       logsSnap.forEach(doc => activityLogs.push(doc.data()));
-      // Sort logs by timestamp descending
       activityLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
 
-    return {
+    const result = {
       santri,
-      transactions: transactions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), // sort newest first
+      transactions: transactions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
       institution,
       financial,
       users,
       registrations,
       activityLogs
     };
+
+    // Keep localStorage in sync as backup cache
+    try {
+      localStorage.setItem('esangu_santri', JSON.stringify(result.santri));
+      localStorage.setItem('esangu_transactions', JSON.stringify(result.transactions));
+      localStorage.setItem('esangu_institution', JSON.stringify(result.institution));
+      localStorage.setItem('esangu_financial', JSON.stringify(result.financial));
+      localStorage.setItem('esangu_users', JSON.stringify(result.users));
+      localStorage.setItem('esangu_registrations', JSON.stringify(result.registrations));
+      localStorage.setItem('esangu_activityLogs', JSON.stringify(result.activityLogs));
+    } catch {}
+
+    return result;
   } catch (error) {
-    console.error("Error fetching data from Firebase:", error);
-    // Fallback to empty/default if offline
-    return {
-      santri: [],
-      transactions: [],
-      institution: DEFAULT_INSTITUTION_SETTINGS,
-      financial: DEFAULT_FINANCIAL_SETTINGS,
-      users: DEFAULT_USERS,
-      registrations: [],
-      activityLogs: []
-    };
+    handleFirestoreError(error, OperationType.GET, 'all');
+    // Seamless fallback to local storage
+    return getLocalStorageData();
   }
 }
 
@@ -120,16 +155,27 @@ export async function saveFirebaseData(data: {
   registrations?: PendingRegistration[];
   activityLogs?: any[];
 }) {
+  // Always update localStorage first for instantaneous zero-latency persistence & offline readiness
+  try {
+    if (data.santri) localStorage.setItem('esangu_santri', JSON.stringify(data.santri));
+    if (data.transactions) localStorage.setItem('esangu_transactions', JSON.stringify(data.transactions));
+    if (data.institution) localStorage.setItem('esangu_institution', JSON.stringify(data.institution));
+    if (data.financial) localStorage.setItem('esangu_financial', JSON.stringify(data.financial));
+    if (data.users) localStorage.setItem('esangu_users', JSON.stringify(data.users));
+    if (data.registrations) localStorage.setItem('esangu_registrations', JSON.stringify(data.registrations));
+    if (data.activityLogs) localStorage.setItem('esangu_activityLogs', JSON.stringify(data.activityLogs));
+  } catch (err) {
+    console.warn("Local cache save warning:", err);
+  }
+
+  // Then synchronize to Cloud Firestore
   try {
     const batch = writeBatch(db);
 
     if (data.santri) {
-      // In a real app we'd only update changed ones, but for this prototype we can just set them
       data.santri.forEach(s => {
         batch.set(doc(collection(db, 'santri'), s.id), cleanUndefined(s));
       });
-      // We might need to handle deletions, but the app state handles full replacement.
-      // A more robust way is to delete missing ones, but writing all is simpler for now.
     }
 
     if (data.transactions) {
@@ -166,10 +212,8 @@ export async function saveFirebaseData(data: {
 
     await batch.commit();
   } catch (error: any) {
-    console.error("Error saving data to Firebase:", error);
-    if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota')) {
-      alert("Maaf, kuota database Firebase harian Anda telah habis. Perubahan hanya tersimpan sementara di aplikasi dan akan hilang saat halaman dimuat ulang. Silakan coba lagi besok.");
-    }
+    handleFirestoreError(error, OperationType.WRITE, 'batch');
+    // Note: Data is safely stored in local cache, so user work is preserved
   }
 }
 
@@ -177,14 +221,10 @@ export async function saveFirebaseData(data: {
 export async function deleteFirebaseDocument(collectionName: string, id: string) {
   try {
     const docRef = doc(db, collectionName, id);
-    // Use dynamic import or writeBatch to delete
     const batch = writeBatch(db);
     batch.delete(docRef);
     await batch.commit();
   } catch (e: any) {
-    console.error("Error deleting doc:", e);
-    if (e?.code === 'resource-exhausted' || e?.message?.includes('Quota')) {
-      alert("Maaf, kuota database Firebase harian Anda telah habis. Perubahan hanya tersimpan sementara.");
-    }
+    handleFirestoreError(e, OperationType.DELETE, `${collectionName}/${id}`);
   }
 }

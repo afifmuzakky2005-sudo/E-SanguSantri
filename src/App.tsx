@@ -6,6 +6,9 @@ import GuardianPortal from './components/GuardianPortal';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import { ShieldAlert, X, Eye, EyeOff } from 'lucide-react';
+import { updateAppFavicon } from './lib/faviconHelper';
+import { PWAInstallPrompt } from './components/PWAInstallBanner';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
   // Core application states
@@ -119,6 +122,13 @@ export default function App() {
     };
     loadData();
   }, []);
+
+  // Synchronize browser tab favicon whenever institution logo changes
+  useEffect(() => {
+    if (institution?.logoUrl) {
+      updateAppFavicon(institution.logoUrl);
+    }
+  }, [institution?.logoUrl]);
 
   const addLog = (user: string, role: string, action: string, details: string) => {
     const newLog = {
@@ -288,18 +298,19 @@ export default function App() {
       id: 'tx_' + Date.now().toString() + '_' + Math.floor(Math.random() * 1000000).toString(),
       timestamp: newTx.timestamp || new Date().toISOString()
     };
-    const updated = [nextTx, ...transactions];
-    setTransactions(updated);
+    setTransactions(prev => [nextTx, ...prev]);
     saveFirebaseData({ transactions: [nextTx] });
 
     // Sync student status: ensure student is marked as having active savings upon transaction addition
-    const student = students.find(s => s.id === newTx.santriId);
-    if (student && (!student.hasSavings || !student.savingsActive)) {
-      const updatedStudent = { ...student, hasSavings: true, savingsActive: true };
-      const updatedStudents = students.map(s => s.id === student.id ? updatedStudent : s);
-      setStudents(updatedStudents);
-      saveFirebaseData({ santri: [updatedStudent] });
-    }
+    setStudents(prev => {
+      const student = prev.find(s => s.id === newTx.santriId);
+      if (student && (!student.hasSavings || !student.savingsActive)) {
+        const updatedStudent = { ...student, hasSavings: true, savingsActive: true };
+        saveFirebaseData({ santri: [updatedStudent] });
+        return prev.map(s => s.id === student.id ? updatedStudent : s);
+      }
+      return prev;
+    });
 
     if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Transaksi', `Melakukan ${nextTx.type} ${nextTx.accountType} sebesar Rp${nextTx.amount} untuk santri ${nextTx.santriName}`);
     return nextTx;
@@ -307,6 +318,7 @@ export default function App() {
 
   const handleSaveInstitution = (updatedInst: InstitutionSettings) => {
     setInstitution(updatedInst);
+    updateAppFavicon(updatedInst.logoUrl);
     saveFirebaseData({ institution: updatedInst });
   };
 
@@ -679,6 +691,10 @@ export default function App() {
           return false;
         }}
       />
+
+      {/* Offline Indicator & PWA Standalone Banner */}
+      <OfflineIndicator />
+      <PWAInstallPrompt variant="banner" />
 
       {globalAlert && (
         <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-250">
