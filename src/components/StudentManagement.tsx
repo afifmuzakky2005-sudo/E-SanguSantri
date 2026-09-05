@@ -93,9 +93,10 @@ export default function StudentManagement({
 
   // Search and filter students
   let filteredStudents = students.filter(student => {
-    const matchesSearch = 
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.nis.includes(searchQuery);
+    const q = (searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q ||
+      (student.name || '').toLowerCase().includes(q) ||
+      (student.nis || '').toLowerCase().includes(q);
     
     const matchesClass = filterClass === 'Semua' || student.className === filterClass;
     const matchesStatus = filterStatus === 'Semua' || student.status === filterStatus;
@@ -254,7 +255,7 @@ export default function StudentManagement({
           if (!rowClass) {
             rowErrors.push('Kelas wajib diisi');
           } else {
-            const matchedClass = classesList.find(c => c.toLowerCase() === rowClass.toLowerCase());
+            const matchedClass = classesList.find(c => (c || '').toLowerCase() === (rowClass || '').toLowerCase());
             if (!matchedClass) {
               rowErrors.push(`Kelas "${rowClass}" tidak terdaftar di pengaturan`);
             } else {
@@ -263,7 +264,7 @@ export default function StudentManagement({
           }
 
           if (rowDorm && rowDorm !== '-') {
-            const matchedDorm = (institution.dorms || []).find(d => d.toLowerCase() === rowDorm.toLowerCase());
+            const matchedDorm = (institution.dorms || []).find(d => (d || '').toLowerCase() === (rowDorm || '').toLowerCase());
             if (!matchedDorm) {
               rowErrors.push(`Asrama "${rowDorm}" tidak terdaftar di pengaturan`);
             } else {

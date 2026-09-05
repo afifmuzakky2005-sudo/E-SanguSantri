@@ -378,9 +378,10 @@ export default function SavingsManagement({
 
   const filteredStudents = students.filter(student => {
     const matchesSavings = student.hasSavings === true;
-    const matchesSearch = 
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.nis.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q ||
+      (student.name || '').toLowerCase().includes(q) ||
+      (student.nis || '').toLowerCase().includes(q);
       
     const matchesClass = filterClass === 'Semua' || student.className === filterClass;
     const matchesStatus = filterStatus === 'Semua' || student.status === filterStatus;
@@ -1229,10 +1230,15 @@ export default function SavingsManagement({
                       <input 
                         type="checkbox"
                         className="w-4 h-4 accent-emerald-600 rounded cursor-pointer ml-2"
-                        checked={addSavingsSelectedIds.length === nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length && nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length > 0}
+                        checked={(() => {
+                          const addQ = (addSavingsSearch || '').trim().toLowerCase();
+                          const matches = nonSavingsStudents.filter(s => !addQ || (s.name || '').toLowerCase().includes(addQ) || (s.nis || '').toLowerCase().includes(addQ));
+                          return matches.length > 0 && addSavingsSelectedIds.length === matches.length;
+                        })()}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setAddSavingsSelectedIds(nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).map(s => s.id));
+                            const addQ = (addSavingsSearch || '').trim().toLowerCase();
+                            setAddSavingsSelectedIds(nonSavingsStudents.filter(s => !addQ || (s.name || '').toLowerCase().includes(addQ) || (s.nis || '').toLowerCase().includes(addQ)).map(s => s.id));
                           } else {
                             setAddSavingsSelectedIds([]);
                           }
@@ -1242,7 +1248,10 @@ export default function SavingsManagement({
                     </label>
                   </div>
                   {nonSavingsStudents
-                    .filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch))
+                    .filter(s => {
+                      const addQ = (addSavingsSearch || '').trim().toLowerCase();
+                      return !addQ || (s.name || '').toLowerCase().includes(addQ) || (s.nis || '').toLowerCase().includes(addQ);
+                    })
                     .map(student => (
                     <label
                       key={student.id}
@@ -1269,7 +1278,10 @@ export default function SavingsManagement({
                     </label>
                   ))}
                   
-                  {nonSavingsStudents.filter(s => s.name.toLowerCase().includes(addSavingsSearch.toLowerCase()) || s.nis.includes(addSavingsSearch)).length === 0 && addSavingsSearch !== '' && (
+                  {nonSavingsStudents.filter(s => {
+                    const addQ = (addSavingsSearch || '').trim().toLowerCase();
+                    return !addQ || (s.name || '').toLowerCase().includes(addQ) || (s.nis || '').toLowerCase().includes(addQ);
+                  }).length === 0 && addSavingsSearch !== '' && (
                     <div className="py-8 text-center text-xs text-gray-400 font-bold">
                       Pencarian "{addSavingsSearch}" tidak ditemukan.
                     </div>

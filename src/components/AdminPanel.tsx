@@ -5,6 +5,7 @@ import { TransactionTrendChart, AllocationPieChart } from './VisualCharts';
 import StudentManagement from './StudentManagement';
 import SavingsManagement from './SavingsManagement';
 import MutasiKas from './MutasiKas';
+import ErrorBoundary from './ErrorBoundary';
 import Transactions from './Transactions';
 import DatabaseBackup from './DatabaseBackup';
 import Settings from './Settings';
@@ -110,7 +111,7 @@ export default function AdminPanel({
   onBulkDeactivateSavings,
   onBulkActivateSavings
 }: AdminPanelProps) {
-  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'datamaster' | 'datatabungan' | 'pendaftaran' | 'pengajuan' | 'transaksi' | 'riwayat' | 'laporan' | 'impor_santri' | 'backup' | 'log_aktifitas' | 'pengaturan' | 'akun_pengguna'>('dashboard');
+  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'datamaster' | 'datatabungan' | 'pendaftaran' | 'pengajuan' | 'transaksi' | 'riwayat' | 'laporan' | 'impor_santri' | 'backup' | 'log_aktifitas' | 'pengaturan' | 'akun_pengguna' | 'qrgeneratif'>('dashboard');
   const [prefilledTransaction, setPrefilledTransaction] = useState<{
     santriId: string;
     accountType: 'Tabungan' | 'Penitipan';
@@ -925,12 +926,14 @@ export default function AdminPanel({
 
         {/* VIEW: RIWAYAT / MUTASI */}
         {activeMenu === 'riwayat' && (
-          <MutasiKas
-            students={students}
-            transactions={transactions}
-            institution={institution}
-            cashierName={currentUser.name}
-          />
+          <ErrorBoundary fallbackTitle="Gagal Memuat Riwayat Mutasi" onReset={() => setActiveMenu('dashboard')}>
+            <MutasiKas
+              students={students || []}
+              transactions={transactions || []}
+              institution={institution}
+              cashierName={currentUser?.name || 'Petugas'}
+            />
+          </ErrorBoundary>
         )}
 
         {/* VIEW 4: LAPORAN & PEMBUKUAN */}
@@ -1246,7 +1249,9 @@ export default function AdminPanel({
 
         {/* VIEW 6.5: LOG AKTIFITAS */}
         {activeMenu === 'log_aktifitas' && (
-          <ActivityLogView activityLogs={activityLogs} />
+          <ErrorBoundary fallbackTitle="Gagal Memuat Log Aktifitas" onReset={() => setActiveMenu('dashboard')}>
+            <ActivityLogView activityLogs={activityLogs || []} />
+          </ErrorBoundary>
         )}
 
         {/* VIEW 6: APP SETTINGS */}

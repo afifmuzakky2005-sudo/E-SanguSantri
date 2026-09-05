@@ -1134,7 +1134,7 @@ export default function GuardianPortal({
                             ) : (
                               <tr>
                                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">
-                                  Belum ada riwayat mutasi {passbookTab.toLowerCase()}
+                                  Belum ada riwayat mutasi {(passbookTab || '').toLowerCase()}
                                 </td>
                               </tr>
                             )}
@@ -1224,18 +1224,20 @@ export default function GuardianPortal({
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {registrations.filter(reg => {
-                    const q = regSearchQuery.toLowerCase();
-                    return reg.name.toLowerCase().includes(q) || 
+                    const q = (regSearchQuery || '').trim().toLowerCase();
+                    if (!q) return true;
+                    return (reg.name || '').toLowerCase().includes(q) || 
                            (reg.guardianPhone && reg.guardianPhone.includes(q)) ||
-                           reg.className.toLowerCase().includes(q) ||
-                           (reg.dorm && reg.dorm.toLowerCase().includes(q));
+                           (reg.className || '').toLowerCase().includes(q) ||
+                           (reg.dorm && (reg.dorm || '').toLowerCase().includes(q));
                   }).length > 0 ? (
                     registrations.filter(reg => {
-                      const q = regSearchQuery.toLowerCase();
-                      return reg.name.toLowerCase().includes(q) || 
+                      const q = (regSearchQuery || '').trim().toLowerCase();
+                      if (!q) return true;
+                      return (reg.name || '').toLowerCase().includes(q) || 
                              (reg.guardianPhone && reg.guardianPhone.includes(q)) ||
-                             reg.className.toLowerCase().includes(q) ||
-                             (reg.dorm && reg.dorm.toLowerCase().includes(q));
+                             (reg.className || '').toLowerCase().includes(q) ||
+                             (reg.dorm && (reg.dorm || '').toLowerCase().includes(q));
                     }).map((reg) => (
                       <tr key={reg.id} className="hover:bg-slate-50">
                         <td className="p-3 font-bold text-gray-950">{reg.name}</td>

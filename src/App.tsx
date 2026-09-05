@@ -4,6 +4,7 @@ import { getLocalStorageData, DEFAULT_INSTITUTION_SETTINGS, DEFAULT_FINANCIAL_SE
 import { Santri, Transaction, InstitutionSettings, FinancialSettings, User, PendingRegistration } from './types';
 import GuardianPortal from './components/GuardianPortal';
 import AdminPanel from './components/AdminPanel';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './components/Login';
 import { ShieldAlert, X, Eye, EyeOff } from 'lucide-react';
 import { updateAppFavicon } from './lib/faviconHelper';
@@ -573,7 +574,8 @@ export default function App() {
       return;
     }
 
-    const foundUser = users.find(u => u.username === adminUsername.toLowerCase());
+    const targetUsername = (adminUsername || '').trim().toLowerCase();
+    const foundUser = users.find(u => (u.username || '').toLowerCase() === targetUsername);
     
     if (foundUser) {
       if (foundUser.isActive === false) {
@@ -624,50 +626,54 @@ export default function App() {
       <div className="relative z-10 min-h-screen flex flex-col justify-between">
         {/* Route Switcher Panel */}
         {currentView === 'portal' ? (
-          <GuardianPortal
-            students={students}
-            transactions={transactions}
-            institution={institution}
-            financial={financial}
-            onAdminLoginClick={() => setShowAdminLoginModal(true)}
-            onRegister={handleAddRegistration}
-            registrations={registrations}
-          />
-        ) : (
-          loggedInAdmin && (
-            <AdminPanel
+          <ErrorBoundary fallbackTitle="Portal Wali Santri Mengalami Gangguan" onReset={() => window.location.reload()}>
+            <GuardianPortal
               students={students}
               transactions={transactions}
               institution={institution}
               financial={financial}
-              users={users}
+              onAdminLoginClick={() => setShowAdminLoginModal(true)}
+              onRegister={handleAddRegistration}
               registrations={registrations}
-              activityLogs={activityLogs}
-              currentUser={loggedInAdmin}
-              onLogout={handleAdminLogout}
-              onAddStudent={handleAddStudent}
-              onAddStudents={handleAddStudents}
-              onEditStudent={handleEditStudent}
-              onDeleteStudent={handleDeleteStudent}
-              onBulkDeleteStudents={handleBulkDeleteStudents}
-              onAddTransaction={handleAddTransaction}
-              onSaveInstitution={handleSaveInstitution}
-              onSaveFinancial={handleSaveFinancial}
-              onAddUser={handleAddUser}
-              onEditUser={handleEditUser}
-              onDeleteUser={handleDeleteUser}
-              onRestoreData={handleRestoreData}
-              onSaveFactoryDefault={handleSaveFactoryDefault}
-              onRestoreFactoryDefault={handleRestoreFactoryDefault}
-              onConfirmRegistration={handleConfirmRegistration}
-              onRejectRegistration={handleRejectRegistration}
-              onConfirmDeposit={handleConfirmDeposit}
-              onDeleteRegistration={handleDeleteRegistration}
-              onActivateSavings={handleActivateSavings}
-              onDeactivateSavings={handleDeactivateSavings}
-              onBulkDeactivateSavings={handleBulkDeactivateSavings}
-              onBulkActivateSavings={handleBulkActivateSavings}
             />
+          </ErrorBoundary>
+        ) : (
+          loggedInAdmin && (
+            <ErrorBoundary fallbackTitle="Panel Administrasi Mengalami Gangguan" onReset={() => setCurrentView('portal')}>
+              <AdminPanel
+                students={students}
+                transactions={transactions}
+                institution={institution}
+                financial={financial}
+                users={users}
+                registrations={registrations}
+                activityLogs={activityLogs}
+                currentUser={loggedInAdmin}
+                onLogout={handleAdminLogout}
+                onAddStudent={handleAddStudent}
+                onAddStudents={handleAddStudents}
+                onEditStudent={handleEditStudent}
+                onDeleteStudent={handleDeleteStudent}
+                onBulkDeleteStudents={handleBulkDeleteStudents}
+                onAddTransaction={handleAddTransaction}
+                onSaveInstitution={handleSaveInstitution}
+                onSaveFinancial={handleSaveFinancial}
+                onAddUser={handleAddUser}
+                onEditUser={handleEditUser}
+                onDeleteUser={handleDeleteUser}
+                onRestoreData={handleRestoreData}
+                onSaveFactoryDefault={handleSaveFactoryDefault}
+                onRestoreFactoryDefault={handleRestoreFactoryDefault}
+                onConfirmRegistration={handleConfirmRegistration}
+                onRejectRegistration={handleRejectRegistration}
+                onConfirmDeposit={handleConfirmDeposit}
+                onDeleteRegistration={handleDeleteRegistration}
+                onActivateSavings={handleActivateSavings}
+                onDeactivateSavings={handleDeactivateSavings}
+                onBulkDeactivateSavings={handleBulkDeactivateSavings}
+                onBulkActivateSavings={handleBulkActivateSavings}
+              />
+            </ErrorBoundary>
           )
         )}
       </div>
@@ -681,7 +687,8 @@ export default function App() {
           setAdminUsername(u);
           setAdminPassword(p);
           // Trigger the form submit logic - we can just call the handler manually
-          const foundUser = users.find(usr => usr.username === u.toLowerCase());
+          const targetU = (u || '').trim().toLowerCase();
+          const foundUser = users.find(usr => (usr.username || '').toLowerCase() === targetU);
           if (foundUser && foundUser.isActive !== false) {
             const isPasswordCorrect = foundUser.password 
               ? p === foundUser.password 

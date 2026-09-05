@@ -51,6 +51,7 @@ export default function Transactions({
   const [successModalData, setSuccessModalData] = useState<{
     tx: Transaction;
     student: Santri;
+    splitTx?: Transaction;
   } | null>(null);
 
   // Setor Form State
@@ -135,8 +136,8 @@ export default function Transactions({
       const student = students.find(s => s.id === prefilled.santriId);
       if (student) {
         setSelectedStudent(student);
-        setSearchQuery(student.name);
-        setActiveTab(prefilled.type.toLowerCase() as 'setor' | 'tarik');
+        setSearchQuery(student.name || '');
+        setActiveTab(((prefilled.type || 'setor').toLowerCase()) as 'setor' | 'tarik');
         
         if (prefilled.type === 'Setor') {
           setSetorAccount(prefilled.accountType);
@@ -168,10 +169,12 @@ export default function Transactions({
   const [transactionDateTime, setTransactionDateTime] = useState(getLocalDateTimeString());
 
   // Quick select santri
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.nis.includes(searchQuery)
-  ).slice(0, 5);
+  const filteredStudents = students.filter(s => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return false;
+    return (s.name || '').toLowerCase().includes(q) || 
+           (s.nis || '').includes(searchQuery);
+  }).slice(0, 5);
 
   const handleScanSuccess = (decodedText: string) => {
     setIsCameraOpen(false);
@@ -179,7 +182,7 @@ export default function Transactions({
     const found = students.find(s => 
       s.nis === textToSearch || 
       s.id === textToSearch || 
-      s.name.toLowerCase() === textToSearch.toLowerCase()
+      (s.name || '').toLowerCase() === textToSearch.toLowerCase()
     );
     if (found) {
       playSuccessSound();

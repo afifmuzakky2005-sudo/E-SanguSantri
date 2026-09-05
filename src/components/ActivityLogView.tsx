@@ -15,31 +15,37 @@ export default function ActivityLogView({ activityLogs }: ActivityLogViewProps) 
   const [actionFilter, setActionFilter] = useState('Semua');
 
   const filteredLogs = useMemo(() => {
-    return activityLogs.filter(log => {
-      const matchSearch = 
-        log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.details.toLowerCase().includes(searchQuery.toLowerCase());
+    return (activityLogs || []).filter(log => {
+      if (!log) return false;
+      const q = (searchQuery || '').trim().toLowerCase();
+      const matchSearch = !q ||
+        (log.user || '').toLowerCase().includes(q) ||
+        (log.action || '').toLowerCase().includes(q) ||
+        (log.details || '').toLowerCase().includes(q);
       
       const matchRole = roleFilter === 'Semua' || log.role === roleFilter;
       const matchUser = userFilter === 'Semua' || log.user === userFilter;
       const matchAction = actionFilter === 'Semua' || log.action === actionFilter;
 
       return matchSearch && matchRole && matchUser && matchAction;
-    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }).sort((a, b) => {
+      const timeA = a && a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b && b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+    });
   }, [activityLogs, searchQuery, roleFilter, userFilter, actionFilter]);
 
-  const uniqueRoles = ['Semua', ...Array.from(new Set(activityLogs.map(log => log.role)))];
-  const uniqueUsers = ['Semua', ...Array.from(new Set(activityLogs.map(log => log.user)))];
-  const uniqueActions = ['Semua', ...Array.from(new Set(activityLogs.map(log => log.action)))];
+  const uniqueRoles = ['Semua', ...Array.from(new Set((activityLogs || []).map(log => log?.role).filter(Boolean) as string[]))];
+  const uniqueUsers = ['Semua', ...Array.from(new Set((activityLogs || []).map(log => log?.user).filter(Boolean) as string[]))];
+  const uniqueActions = ['Semua', ...Array.from(new Set((activityLogs || []).map(log => log?.action).filter(Boolean) as string[]))];
 
   const handleDownloadExcel = () => {
     const dataToExport = filteredLogs.map((log) => ({
-      'TANGGAL & WAKTU': new Date(log.timestamp).toLocaleString('id-ID'),
-      'NAMA PENGGUNA': log.user,
-      'ROLE': log.role,
-      'AKTIFITAS': log.action,
-      'KETERANGAN': log.details
+      'TANGGAL & WAKTU': log.timestamp && !isNaN(new Date(log.timestamp).getTime()) ? new Date(log.timestamp).toLocaleString('id-ID') : '-',
+      'NAMA PENGGUNA': log.user || '-',
+      'ROLE': log.role || '-',
+      'AKTIFITAS': log.action || '-',
+      'KETERANGAN': log.details || '-'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -160,28 +166,32 @@ export default function ActivityLogView({ activityLogs }: ActivityLogViewProps) 
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-emerald-50/30 transition group">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-slate-700 text-xs">
-                        {new Date(log.timestamp).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="text-[10px] text-gray-500 font-medium">
-                        {new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-emerald-900">{log.user}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
-                        {log.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-emerald-700 text-xs">{log.action}</td>
-                    <td className="px-6 py-4 text-gray-600 text-xs max-w-xs truncate" title={log.details}>
-                      {log.details}
-                    </td>
-                  </tr>
-                ))
+                  filteredLogs.map((log, idx) => (
+                    <tr key={log.id || `log_${idx}`} className="hover:bg-emerald-50/30 transition group">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-slate-700 text-xs">
+                          {log.timestamp && !isNaN(new Date(log.timestamp).getTime())
+                            ? new Date(log.timestamp).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })
+                            : '-'}
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-medium">
+                          {log.timestamp && !isNaN(new Date(log.timestamp).getTime())
+                            ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                            : ''}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-emerald-900">{log.user || '-'}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wider">
+                          {log.role || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-emerald-700 text-xs">{log.action || '-'}</td>
+                      <td className="px-6 py-4 text-gray-600 text-xs max-w-xs truncate" title={log.details || ''}>
+                        {log.details || '-'}
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>

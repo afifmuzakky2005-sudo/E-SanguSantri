@@ -4,15 +4,23 @@ import { Transaction, Santri, InstitutionSettings } from '../types';
 
 export function formatTxId(txId: string, transactionsList: Transaction[] = []): string {
   if (!txId) return '';
-  // Sort transactions chronologically (oldest first) to assign sequence numbers
-  const sorted = [...transactionsList].sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
-  const index = sorted.findIndex(t => t.id === txId);
-  if (index !== -1) {
-    return `TX-${(index + 1).toString().padStart(7, '0')}`;
+  const cleanId = String(txId);
+  const validTxs = (transactionsList || []).filter((t): t is Transaction => Boolean(t && t.id));
+  
+  if (validTxs.length > 0) {
+    const sorted = [...validTxs].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+    });
+    const index = sorted.findIndex(t => t.id === cleanId);
+    if (index !== -1) {
+      return `TX-${(index + 1).toString().padStart(7, '0')}`;
+    }
   }
   
-  // Fallback: use digits of timestamp
-  const digits = txId.replace(/\D/g, '');
+  // Fallback: use digits of cleanId
+  const digits = cleanId.replace(/\D/g, '');
   if (digits.length >= 7) {
     return `TX-${digits.slice(-7)}`;
   }
@@ -49,16 +57,21 @@ export function parseWaTransactionTemplate(
   institution: InstitutionSettings,
   transactionsList: Transaction[] = []
 ): string {
+  if (!transaction) return '';
   const formattedId = formatTxId(transaction.id, transactionsList);
-  const formattedWaktu = new Date(transaction.timestamp).toLocaleString('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  });
+  const txDate = transaction.timestamp ? new Date(transaction.timestamp) : new Date();
+  const formattedWaktu = !isNaN(txDate.getTime()) 
+    ? txDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+    : (transaction.date || '-');
   
-  let formattedNominal = 'Rp ' + transaction.netAmount.toLocaleString('id-ID');
-  if (transaction.type === 'Tarik' && transaction.adminFee && transaction.adminFee > 0) {
-    const totalTerpotong = Math.max(transaction.amount, (transaction.netAmount || 0) + (transaction.adminFee || 0));
-    formattedNominal = `Rp ${transaction.netAmount.toLocaleString('id-ID')} (Dana Bersih ditarik)\n*Biaya Admin & Layanan :* Rp ${transaction.adminFee.toLocaleString('id-ID')}\n*Total Saldo Terpotong :* Rp ${totalTerpotong.toLocaleString('id-ID')}`;
+  const netAmt = Number(transaction.netAmount) || 0;
+  const adminFee = Number(transaction.adminFee) || 0;
+  const rawAmt = Number(transaction.amount) || 0;
+  
+  let formattedNominal = 'Rp ' + netAmt.toLocaleString('id-ID');
+  if (transaction.type === 'Tarik' && adminFee > 0) {
+    const totalTerpotong = Math.max(rawAmt, netAmt + adminFee);
+    formattedNominal = `Rp ${netAmt.toLocaleString('id-ID')} (Dana Bersih ditarik)\n*Biaya Admin & Layanan :* Rp ${adminFee.toLocaleString('id-ID')}\n*Total Saldo Terpotong :* Rp ${totalTerpotong.toLocaleString('id-ID')}`;
   }
   
   const buktiText = transaction.type === 'Setor' ? 'BUKTI SETOR DANA' : 'BUKTI PENARIKAN DANA';
@@ -66,14 +79,14 @@ export function parseWaTransactionTemplate(
   const baseTemplate = template || `*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan :* {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
 
   return baseTemplate
-    .replace(/{NAMA PONDOK}/g, institution.name || '')
-    .replace(/{NIS}/g, santri.nis || '')
-    .replace(/{NAMA}/g, santri.name || '')
-    .replace(/{KELAS}/g, santri.className || '')
+    .replace(/{NAMA PONDOK}/g, institution?.name || '')
+    .replace(/{NIS}/g, santri?.nis || '')
+    .replace(/{NAMA}/g, santri?.name || '')
+    .replace(/{KELAS}/g, santri?.className || '')
     .replace(/{BUKTI}/g, buktiText)
     .replace(/{ID_TRANSAKSI}/g, formattedId)
     .replace(/{TANGGAL & WAKTU}/g, formattedWaktu)
-    .replace(/{AKUN DANA}/g, transaction.accountType)
+    .replace(/{AKUN DANA}/g, transaction.accountType || '')
     .replace(/{KETERANGAN}/g, transaction.note || '-')
     .replace(/{NOMINAL}/g, formattedNominal);
 }

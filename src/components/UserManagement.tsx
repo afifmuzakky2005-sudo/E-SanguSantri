@@ -76,10 +76,10 @@ export default function UserManagement({
       return;
     }
 
-    const cleanUsername = username.trim().toLowerCase();
+    const cleanUsername = (username || '').trim().toLowerCase();
 
     if (isEditing && editingUserId) {
-      if (users.some(u => u.username === cleanUsername && u.id !== editingUserId)) {
+      if (users.some(u => (u.username || '').toLowerCase() === cleanUsername && u.id !== editingUserId)) {
         alert(`Username "${cleanUsername}" sudah digunakan oleh staf lain!`);
         return;
       }

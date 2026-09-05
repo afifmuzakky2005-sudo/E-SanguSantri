@@ -52,14 +52,15 @@ export default function RegistrationManagement({
   const pendingSetorDana = (registrations || []).filter(r => r.status === 'Pending' && r.type === 'Setor Dana');
 
   // Apply search filter
+  const query = (searchTerm || '').trim().toLowerCase();
   const filteredBukaAkun = pendingBukaAkun.filter(r => 
-    r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (r.className && r.className.toLowerCase().includes(searchTerm.toLowerCase()))
+    (r.name || '').toLowerCase().includes(query) || 
+    (r.className && (r.className || '').toLowerCase().includes(query))
   );
 
   const filteredSetorDana = pendingSetorDana.filter(r => 
-    r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (r.className && r.className.toLowerCase().includes(searchTerm.toLowerCase()))
+    (r.name || '').toLowerCase().includes(query) || 
+    (r.className && (r.className || '').toLowerCase().includes(query))
   );
 
   const handleConfirmClick = (id: string) => {

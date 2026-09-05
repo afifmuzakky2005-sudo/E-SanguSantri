@@ -111,7 +111,7 @@ export default function StudentImport({
           if (!rowClass) {
             rowErrors.push('Kelas wajib diisi');
           } else {
-            const matchedClass = classesList.find(c => c.toLowerCase() === rowClass.toLowerCase());
+            const matchedClass = classesList.find(c => (c || '').toLowerCase() === (rowClass || '').toLowerCase());
             if (!matchedClass) {
               rowErrors.push(`Kelas "${rowClass}" tidak terdaftar di sistem`);
             } else {
@@ -120,7 +120,7 @@ export default function StudentImport({
           }
 
           if (rowDorm && rowDorm !== '-') {
-            const matchedDorm = dormsList.find(d => d.toLowerCase() === rowDorm.toLowerCase());
+            const matchedDorm = dormsList.find(d => (d || '').toLowerCase() === (rowDorm || '').toLowerCase());
             if (!matchedDorm) {
               rowErrors.push(`Asrama "${rowDorm}" tidak terdaftar di sistem`);
             } else {
