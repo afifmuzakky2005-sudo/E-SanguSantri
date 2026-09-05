@@ -1,16 +1,69 @@
+let previousManifestBlobUrl: string | null = null;
+
 /**
- * Updates the document favicon and apple-touch-icon dynamically with a custom logo.
+ * Generates an image data URL with specific square dimensions and optional safe-padding.
  */
-export function updateAppFavicon(logoUrl?: string) {
+export function generateSizedIcon(imgSrc: string, size: number, safePadding = 0): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined') {
+      resolve(imgSrc);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(imgSrc);
+          return;
+        }
+
+        ctx.clearRect(0, 0, size, size);
+
+        const targetSize = Math.max(16, size - safePadding * 2);
+        const imgW = img.width || size;
+        const imgH = img.height || size;
+        const scale = Math.min(targetSize / imgW, targetSize / imgH);
+        const w = Math.round(imgW * scale);
+        const h = Math.round(imgH * scale);
+        const x = Math.round((size - w) / 2);
+        const y = Math.round((size - h) / 2);
+
+        ctx.drawImage(img, x, y, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve(imgSrc);
+      }
+    };
+    img.onerror = () => resolve(imgSrc);
+    img.src = imgSrc;
+  });
+}
+
+/**
+ * Updates the document favicon, apple-touch-icon, and PWA manifest dynamically
+ * so that any uploaded logo becomes the application icon for both browser tabs
+ * and installed PWA on phones & desktops.
+ */
+export async function updateAppFavicon(logoUrl?: string, institutionName?: string) {
   if (typeof document === 'undefined') return;
 
   const url = logoUrl && logoUrl.trim().length > 0 ? logoUrl : '/favicon.png';
+  const appTitle = institutionName && institutionName.trim().length > 0 
+    ? `E-SanguSantri - ${institutionName.trim()}`
+    : 'E-SanguSantri';
 
-  // Update or create icon links
+  // 1. Remove obsolete or static icon links
   const iconSelectors = [
     "link[rel='icon']",
     "link[rel='shortcut icon']",
     "link[rel='apple-touch-icon']",
+    "link[rel='apple-touch-icon-precomposed']",
     "#dynamic-favicon-svg",
     "#dynamic-favicon-png",
     "#dynamic-apple-icon"
@@ -21,7 +74,7 @@ export function updateAppFavicon(logoUrl?: string) {
     existing.forEach(el => el.remove());
   });
 
-  // Create primary PNG favicon
+  // 2. Create primary PNG favicon (32x32 / standard)
   const linkPng = document.createElement('link');
   linkPng.id = 'dynamic-favicon-png';
   linkPng.rel = 'icon';
@@ -29,19 +82,133 @@ export function updateAppFavicon(logoUrl?: string) {
   linkPng.href = url;
   document.head.appendChild(linkPng);
 
-  // Create shortcut icon
+  // 3. Create shortcut icon for older browsers
   const linkShortcut = document.createElement('link');
   linkShortcut.rel = 'shortcut icon';
   linkShortcut.type = 'image/png';
   linkShortcut.href = url;
   document.head.appendChild(linkShortcut);
 
-  // Create Apple Touch Icon
+  // 4. Create Apple Touch Icon for iOS Safari & homescreen add
   const linkApple = document.createElement('link');
   linkApple.id = 'dynamic-apple-icon';
   linkApple.rel = 'apple-touch-icon';
   linkApple.href = url;
   document.head.appendChild(linkApple);
+
+  const linkApplePrecomposed = document.createElement('link');
+  linkApplePrecomposed.rel = 'apple-touch-icon-precomposed';
+  linkApplePrecomposed.href = url;
+  document.head.appendChild(linkApplePrecomposed);
+
+  // 5. Update meta tags
+  const setMetaContent = (nameOrProp: string, value: string, isProp = false) => {
+    const selector = isProp ? `meta[property='${nameOrProp}']` : `meta[name='${nameOrProp}']`;
+    let meta = document.querySelector<HTMLMetaElement>(selector);
+    if (!meta) {
+      meta = document.createElement('meta');
+      if (isProp) meta.setAttribute('property', nameOrProp);
+      else meta.setAttribute('name', nameOrProp);
+      document.head.appendChild(meta);
+    }
+    meta.content = value;
+  };
+
+  setMetaContent('apple-mobile-web-app-title', 'E-SanguSantri');
+  setMetaContent('application-name', 'E-SanguSantri');
+  setMetaContent('msapplication-TileImage', url);
+  setMetaContent('og:image', url, true);
+
+  // 6. Generate sized icons for PWA and dynamically update Web App Manifest
+  try {
+    const [icon192, icon512, maskable512] = await Promise.all([
+      generateSizedIcon(url, 192, 0),
+      generateSizedIcon(url, 512, 0),
+      generateSizedIcon(url, 512, 48) // safe padding for Android adaptive squircle/round icons
+    ]);
+
+    const dynamicManifest = {
+      id: '/',
+      name: appTitle,
+      short_name: 'E-SanguSantri',
+      description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
+      theme_color: '#047857',
+      background_color: '#f8fafc',
+      display: 'standalone',
+      orientation: 'portrait',
+      start_url: '/',
+      scope: '/',
+      icons: [
+        {
+          src: icon192,
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'any'
+        },
+        {
+          src: icon512,
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any'
+        },
+        {
+          src: maskable512,
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable'
+        }
+      ]
+    };
+
+    const manifestBlob = new Blob([JSON.stringify(dynamicManifest, null, 2)], {
+      type: 'application/manifest+json'
+    });
+
+    if (previousManifestBlobUrl) {
+      URL.revokeObjectURL(previousManifestBlobUrl);
+    }
+    const newManifestUrl = URL.createObjectURL(manifestBlob);
+    previousManifestBlobUrl = newManifestUrl;
+
+    let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
+    if (!manifestLink) {
+      manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      document.head.appendChild(manifestLink);
+    }
+    manifestLink.href = newManifestUrl;
+
+    // 7. Synchronize to Browser CacheStorage (Workbox & PWA caches) so background install fetch gets custom icon
+    if ('caches' in window) {
+      try {
+        const [blob192, blob512, blobMaskable] = await Promise.all([
+          fetch(icon192).then(r => r.blob()),
+          fetch(icon512).then(r => r.blob()),
+          fetch(maskable512).then(r => r.blob())
+        ]);
+
+        const cacheNames = await caches.keys();
+        const targets = cacheNames.length > 0 ? cacheNames : ['pwa-custom-icons-v1'];
+
+        for (const name of targets) {
+          const cache = await caches.open(name);
+          await Promise.all([
+            cache.put('/pwa-192x192.png', new Response(blob192, { headers: { 'Content-Type': 'image/png' } })),
+            cache.put('/pwa-512x512.png', new Response(blob512, { headers: { 'Content-Type': 'image/png' } })),
+            cache.put('/pwa-maskable-512x512.png', new Response(blobMaskable, { headers: { 'Content-Type': 'image/png' } })),
+            cache.put('/apple-touch-icon.png', new Response(blob192, { headers: { 'Content-Type': 'image/png' } })),
+            cache.put('/favicon.png', new Response(blob192, { headers: { 'Content-Type': 'image/png' } })),
+            cache.put('/manifest.webmanifest', new Response(manifestBlob, { headers: { 'Content-Type': 'application/manifest+json' } }))
+          ]).catch(() => {});
+        }
+      } catch (cacheErr) {
+        // Non-fatal cache write
+        console.debug('Cache storage sync notice:', cacheErr);
+      }
+    }
+  } catch (err) {
+    console.warn('Dynamic PWA manifest update notice:', err);
+  }
 }
 
 /**

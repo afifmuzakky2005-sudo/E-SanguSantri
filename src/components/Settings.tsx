@@ -160,9 +160,9 @@ export default function Settings({
               ...institution,
               logoUrl: pngDataUrl
             });
-            // Immediately sync browser tab favicon and touch icons
-            updateAppFavicon(pngDataUrl);
-            triggerSuccess('Logo / Ikon PNG berhasil diunggah & langsung diterapkan sebagai ikon aplikasi!');
+            // Immediately sync browser tab favicon, Apple touch icon, and PWA manifest
+            updateAppFavicon(pngDataUrl, institution.name);
+            triggerSuccess('Logo / Ikon PNG berhasil diunggah & langsung diterapkan sebagai favicon tab dan ikon aplikasi PWA!');
           }
         };
         img.src = event.target?.result as string;

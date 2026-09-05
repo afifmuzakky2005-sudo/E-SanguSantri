@@ -145,13 +145,11 @@ export default function App() {
     loadData();
   }, []);
 
-  // Synchronize browser tab title and favicon dynamically
+  // Synchronize browser tab title, favicon, and PWA manifest dynamically
   useEffect(() => {
     const instName = institution?.name?.trim();
     document.title = instName ? `E-SanguSantri - ${instName}` : 'E-SanguSantri';
-    if (institution?.logoUrl) {
-      updateAppFavicon(institution.logoUrl);
-    }
+    updateAppFavicon(institution?.logoUrl, instName);
   }, [institution?.name, institution?.logoUrl]);
 
   const addLog = (user: string, role: string, action: string, details: string) => {
