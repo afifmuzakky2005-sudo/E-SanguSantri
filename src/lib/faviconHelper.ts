@@ -1,5 +1,5 @@
 /**
- * Updates the document favicon and apple-touch-icon dynamically with a custom transparent logo.
+ * Updates the document favicon and apple-touch-icon dynamically with a custom logo.
  */
 export function updateAppFavicon(logoUrl?: string) {
   if (typeof document === 'undefined') return;
@@ -21,7 +21,7 @@ export function updateAppFavicon(logoUrl?: string) {
     existing.forEach(el => el.remove());
   });
 
-  // Create primary PNG favicon (transparent)
+  // Create primary PNG favicon
   const linkPng = document.createElement('link');
   linkPng.id = 'dynamic-favicon-png';
   linkPng.rel = 'icon';
@@ -45,14 +45,18 @@ export function updateAppFavicon(logoUrl?: string) {
 }
 
 /**
- * Process an image to ensure a 100% transparent background (no white box) and PNG encoding.
+ * Process a logo/icon image in PNG format:
+ * - Accepts any PNG (with or without transparency) as-is.
+ * - Does NOT add any artificial background.
+ * - Does NOT automatically strip or clear white pixels (preserves original artwork).
+ * - Scales down smoothly to max 512x512 if too large for lightweight storage.
  */
-export function processTransparentLogo(img: HTMLImageElement, removeWhiteBg = true): string {
+export function processLogoImage(img: HTMLImageElement): string {
   const canvas = document.createElement('canvas');
-  let width = img.width;
-  let height = img.height;
-  const MAX_WIDTH = 400;
-  const MAX_HEIGHT = 400;
+  let width = img.width || 512;
+  let height = img.height || 512;
+  const MAX_WIDTH = 512;
+  const MAX_HEIGHT = 512;
 
   if (width > height) {
     if (width > MAX_WIDTH) {
@@ -68,36 +72,22 @@ export function processTransparentLogo(img: HTMLImageElement, removeWhiteBg = tr
 
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
+  // Clear canvas so no background color is added; transparent stays transparent
   ctx.clearRect(0, 0, width, height);
+
+  // Draw image faithfully as-is without pixel alteration or white background removal
   ctx.drawImage(img, 0, 0, width, height);
 
-  if (removeWhiteBg) {
-    const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-
-    // Convert pure white or near-white background to transparent
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const alpha = data[i + 3];
-
-      if (alpha === 0) continue;
-
-      // If pixel is near-white (background)
-      if (r >= 238 && g >= 238 && b >= 238) {
-        data[i + 3] = 0; // Make 100% transparent
-      } else if (r >= 215 && g >= 215 && b >= 215) {
-        // Smooth anti-aliased edge
-        const factor = (255 - (r + g + b) / 3) / 40;
-        data[i + 3] = Math.round(alpha * Math.max(0, Math.min(1, factor)));
-      }
-    }
-    ctx.putImageData(imgData, 0, 0);
-  }
-
   return canvas.toDataURL('image/png');
+}
+
+/**
+ * Backward compatibility alias for processLogoImage.
+ * Preserves original PNG pixels as requested (never removes white background).
+ */
+export function processTransparentLogo(img: HTMLImageElement, _removeWhiteBg = false): string {
+  return processLogoImage(img);
 }

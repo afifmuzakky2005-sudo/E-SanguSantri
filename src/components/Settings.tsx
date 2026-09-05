@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { InstitutionSettings, FinancialSettings, User } from '../types';
 import { Save, CheckCircle, Shield, Settings2, HelpCircle, UserPlus, Trash2, BookOpen, Plus, Home, MessageSquare, RefreshCw, AlertTriangle, QrCode, Sparkles } from 'lucide-react';
-import { processTransparentLogo, updateAppFavicon } from '../lib/faviconHelper';
+import { processLogoImage, updateAppFavicon } from '../lib/faviconHelper';
 
 interface SettingsProps {
   institution: InstitutionSettings;
@@ -151,18 +151,18 @@ export default function Settings({
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          // Process transparent logo (clears white background, outputs PNG format)
-          const transparentDataUrl = processTransparentLogo(img, true);
-          if (transparentDataUrl) {
-            setInstLogo(transparentDataUrl);
+          // Process logo as PNG: preserves pixels faithfully without adding background or cleaning white background
+          const pngDataUrl = processLogoImage(img);
+          if (pngDataUrl) {
+            setInstLogo(pngDataUrl);
             // Auto-save the logo to institution
             onSaveInstitution({
               ...institution,
-              logoUrl: transparentDataUrl
+              logoUrl: pngDataUrl
             });
             // Immediately sync browser tab favicon and touch icons
-            updateAppFavicon(transparentDataUrl);
-            triggerSuccess('Logo transparan berhasil diunggah & dijadikan favicon aplikasi!');
+            updateAppFavicon(pngDataUrl);
+            triggerSuccess('Logo / Ikon PNG berhasil diunggah & langsung diterapkan sebagai ikon aplikasi!');
           }
         };
         img.src = event.target?.result as string;
@@ -348,21 +348,21 @@ export default function Settings({
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-gray-500 font-black uppercase tracking-widest text-[10px]">LOGO LEMBAGA & FAVICON (Transparan)</label>
+                <label className="block text-gray-500 font-black uppercase tracking-widest text-[10px]">LOGO & IKON APLIKASI (Format PNG)</label>
                 <span className="text-[9px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
                   <Sparkles className="w-2.5 h-2.5" />
-                  Auto-Transparent Favicon
+                  Format PNG Asli
                 </span>
               </div>
               <div className="flex items-center gap-4 bg-gray-50/70 p-3 rounded-xl border border-emerald-100">
                 <div 
-                  className="w-14 h-14 rounded-xl border-2 border-dashed border-emerald-300 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative"
+                  className="w-14 h-14 rounded-xl border-2 border-dashed border-emerald-300 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative bg-white/50"
                   style={{
                     backgroundImage: 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)',
                     backgroundSize: '10px 10px',
                     backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px'
                   }}
-                  title="Pratinjau Logo Transparan"
+                  title="Pratinjau Logo / Ikon"
                 >
                   {instLogo ? (
                     <img src={instLogo} alt="Logo Preview" className="w-full h-full object-contain p-1" />
@@ -378,7 +378,7 @@ export default function Settings({
                     className="block w-full text-[10px] text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer transition-all"
                   />
                   <p className="text-[9px] text-gray-500 font-medium">
-                    * Background putih otomatis dibersihkan transparan (no background) dan langsung diterapkan sebagai favicon tab browser serta ikon aplikasi PWA.
+                    * Mendukung gambar PNG asli tanpa penambahan background dan tanpa menghapus warna putih gambar. Langsung disinkronkan ke favicon tab browser serta ikon aplikasi E-Sangu Santri.
                   </p>
                 </div>
               </div>

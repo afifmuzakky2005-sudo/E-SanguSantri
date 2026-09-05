@@ -40,13 +40,19 @@ export async function getFirebaseData() {
     const santriSnap = await getDocs(collection(db, 'santri'));
     let santri: Santri[] = [];
     if (!santriSnap.empty) {
-      santriSnap.forEach(doc => santri.push(doc.data() as Santri));
+      santriSnap.forEach(docSnap => {
+        const data = docSnap.data() as Santri;
+        santri.push({ id: data.id || docSnap.id, ...data });
+      });
     }
 
     const txSnap = await getDocs(collection(db, 'transactions'));
     let transactions: Transaction[] = [];
     if (!txSnap.empty) {
-      txSnap.forEach(doc => transactions.push(doc.data() as Transaction));
+      txSnap.forEach(docSnap => {
+        const data = docSnap.data() as Transaction;
+        transactions.push({ id: data.id || docSnap.id, ...data });
+      });
     }
 
     const instDoc = await getDoc(doc(db, 'settings', 'institution'));
@@ -72,7 +78,10 @@ export async function getFirebaseData() {
     const usersSnap = await getDocs(collection(db, 'users'));
     let users: User[] = [];
     if (!usersSnap.empty) {
-      usersSnap.forEach(doc => users.push(doc.data() as User));
+      usersSnap.forEach(docSnap => {
+        const data = docSnap.data() as User;
+        users.push({ id: data.id || docSnap.id, ...data });
+      });
     } else {
       const batch = writeBatch(db);
       DEFAULT_USERS.forEach(u => {
@@ -85,13 +94,19 @@ export async function getFirebaseData() {
     const regSnap = await getDocs(collection(db, 'registrations'));
     let registrations: PendingRegistration[] = [];
     if (!regSnap.empty) {
-      regSnap.forEach(doc => registrations.push(doc.data() as PendingRegistration));
+      regSnap.forEach(docSnap => {
+        const data = docSnap.data() as PendingRegistration;
+        registrations.push({ id: data.id || docSnap.id, ...data });
+      });
     }
 
     const logsSnap = await getDocs(collection(db, 'activityLogs'));
     let activityLogs: any[] = [];
     if (!logsSnap.empty) {
-      logsSnap.forEach(doc => activityLogs.push(doc.data()));
+      logsSnap.forEach(docSnap => {
+        const data = docSnap.data() as any;
+        activityLogs.push({ id: data.id || docSnap.id, ...data });
+      });
       activityLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
 

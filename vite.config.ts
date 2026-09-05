@@ -14,8 +14,8 @@ export default defineConfig(() => {
         includeAssets: ['favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
-          name: 'E-Sangu Santri - Tabungan & Uang Saku',
-          short_name: 'E-Sangu',
+          name: 'E-Sangu Santri',
+          short_name: 'E-Sangu Santri',
           description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
           theme_color: '#047857',
           background_color: '#f8fafc',

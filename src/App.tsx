@@ -7,7 +7,6 @@ import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import { ShieldAlert, X, Eye, EyeOff } from 'lucide-react';
 import { updateAppFavicon } from './lib/faviconHelper';
-import { PWAInstallPrompt } from './components/PWAInstallBanner';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
@@ -67,8 +66,20 @@ export default function App() {
         setInstitution(db.institution);
         setFinancial(db.financial);
         
-        let loadedUsers = db.users || [];
-        let updatedUsers = [...loadedUsers];
+        let loadedUsers = (db.users || []).map((u, idx) => ({
+          ...u,
+          id: u.id || `u_${u.username || 'user'}_${idx}`
+        }));
+        
+        // Deduplicate users by username
+        const uniqueUserMap = new Map<string, User>();
+        loadedUsers.forEach(u => {
+          if (u && u.username) {
+            uniqueUserMap.set(u.username.toLowerCase(), u);
+          }
+        });
+        
+        let updatedUsers = Array.from(uniqueUserMap.values());
         let needsSave = false;
         
         const masterIdx = updatedUsers.findIndex(u => u.username === 'master');
@@ -109,11 +120,22 @@ export default function App() {
         const cleanSantri = (db.santri || []).filter(s => s && s.id && !['s1', 's2', 's3', 's4', 's5'].includes(s.id));
         const cleanTxs = (db.transactions || []).filter(t => t && t.id && !['tx1', 'tx2', 'tx3', 'tx4', 'tx5', 'tx6', 'tx7', 'tx8', 'tx9', 'tx10', 'tx11', 'tx12', 'tx13', 'tx14', 'tx15', 'tx16', 'tx17', 'tx18'].includes(t.id));
 
+        const fallbackUsers = (db.users || []).map((u, idx) => ({
+          ...u,
+          id: u.id || `u_${u.username || 'user'}_${idx}`
+        }));
+        const userMap = new Map<string, User>();
+        fallbackUsers.forEach(u => {
+          if (u && u.username) {
+            userMap.set(u.username.toLowerCase(), u);
+          }
+        });
+
         setStudents(cleanSantri);
         setTransactions(cleanTxs);
         setInstitution(db.institution);
         setFinancial(db.financial);
-        setUsers(db.users);
+        setUsers(Array.from(userMap.values()));
         setRegistrations(db.registrations || []);
         setActivityLogs(db.activityLogs || []);
       } finally {
@@ -123,8 +145,9 @@ export default function App() {
     loadData();
   }, []);
 
-  // Synchronize browser tab favicon whenever institution logo changes
+  // Synchronize browser tab title and favicon
   useEffect(() => {
+    document.title = 'E-Sangu Santri';
     if (institution?.logoUrl) {
       updateAppFavicon(institution.logoUrl);
     }
@@ -692,9 +715,8 @@ export default function App() {
         }}
       />
 
-      {/* Offline Indicator & PWA Standalone Banner */}
+      {/* Offline Indicator */}
       <OfflineIndicator />
-      <PWAInstallPrompt variant="banner" />
 
       {globalAlert && (
         <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-250">

@@ -13,7 +13,6 @@ import RegistrationManagement from './RegistrationManagement';
 import StudentImport from './StudentImport';
 import ActivityLogView from './ActivityLogView';
 import { QrGeneratifView } from './QrGeneratifView';
-import { PWAInstallPrompt } from './PWAInstallBanner';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
@@ -664,10 +663,6 @@ export default function AdminPanel({
               <span className="text-yellow-400">SANGU</span>{' '}
               <span className="text-white">SANTRI</span>
             </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <PWAInstallPrompt variant="compact" />
           </div>
         </header>
 

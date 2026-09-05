@@ -166,8 +166,10 @@ export default function UserManagement({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {users.map(u => (
-                <tr key={u.id} className="hover:bg-slate-50/50">
+              {users.map((u, index) => {
+                const rowKey = u.id ? `${u.id}-${index}` : `user-${u.username || 'staff'}-${index}`;
+                return (
+                <tr key={rowKey} className="hover:bg-slate-50/50">
                   {/* NAMA */}
                   <td className="p-3.5 font-bold text-gray-900">{u.name}</td>
                   
@@ -228,7 +230,7 @@ export default function UserManagement({
                         onClick={() => handleOpenEdit(u)}
                         className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded transition cursor-pointer border-none bg-transparent"
                         title="Edit Pengguna"
-                        id={`btn-edit-user-${u.id}`}
+                        id={`btn-edit-user-${u.id || index}`}
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -240,7 +242,7 @@ export default function UserManagement({
                           onClick={() => setDeleteUserConfirm(u.id)}
                           className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition cursor-pointer border-none bg-transparent"
                           title="Hapus Pengguna"
-                          id={`btn-delete-user-trigger-${u.id}`}
+                          id={`btn-delete-user-trigger-${u.id || index}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -250,7 +252,8 @@ export default function UserManagement({
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>

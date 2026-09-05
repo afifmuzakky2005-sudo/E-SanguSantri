@@ -366,8 +366,6 @@ export default function GuardianPortal({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <PWAInstallPrompt variant="compact" />
-
             {!loggedInStudent && (
               <button
                 onClick={onAdminLoginClick}
@@ -615,23 +613,27 @@ export default function GuardianPortal({
                   </div>
 
                   <div className="space-y-3">
-                    {institution.phone && (
-                      <a 
-                        href={`https://wa.me/${institution.phone.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-full py-3.5 bg-white text-emerald-900 font-black rounded-2xl text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm border border-emerald-200"
-                      >
-                        <MessageSquare className="w-4 h-4 text-emerald-700" />
-                        Hubungi Admin
-                      </a>
-                    )}
+                    <a 
+                      href={institution.phone ? `https://wa.me/${institution.phone.replace(/[^0-9]/g, '')}` : '#'}
+                      target={institution.phone ? "_blank" : undefined}
+                      rel="noreferrer"
+                      onClick={(e) => {
+                        if (!institution.phone) {
+                          e.preventDefault();
+                          alert('Nomor kontak WhatsApp admin belum diatur di Pengaturan Lembaga.');
+                        }
+                      }}
+                      className="w-full py-3.5 bg-white text-emerald-900 font-black rounded-2xl text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm border border-emerald-200"
+                    >
+                      <MessageSquare className="w-4 h-4 text-emerald-700" />
+                      Hubungi Admin
+                    </a>
 
-                    {/* Tombol Instal Aplikasi (Terpisah, warna hijau seperti tombol Login Admin) */}
+                    {/* Tombol Instal Aplikasi (Terpisah tepat di bawah tombol Hubungi Admin) */}
                     <PWAInstallPrompt
                       variant="button"
                       showAlways={true}
-                      label="Instal Aplikasi"
+                      label="INSTAL APLIKASI"
                       className="w-full !py-3.5 !rounded-2xl !text-xs !shadow-lg !shadow-emerald-900/20"
                     />
                   </div>
