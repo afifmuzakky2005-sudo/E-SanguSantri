@@ -1,5 +1,3 @@
-let previousManifestBlobUrl: string | null = null;
-
 /**
  * Generates an image data URL with specific square dimensions and optional safe-padding.
  */
@@ -127,56 +125,16 @@ export async function updateAppFavicon(logoUrl?: string, institutionName?: strin
       generateSizedIcon(url, 512, 48) // safe padding for Android adaptive squircle/round icons
     ]);
 
-    const dynamicManifest = {
-      id: '/',
-      name: appTitle,
-      short_name: 'E-SanguSantri',
-      description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
-      theme_color: '#047857',
-      background_color: '#f8fafc',
-      display: 'standalone',
-      orientation: 'portrait',
-      start_url: '/',
-      scope: '/',
-      icons: [
-        {
-          src: icon192,
-          sizes: '192x192',
-          type: 'image/png',
-          purpose: 'any'
-        },
-        {
-          src: icon512,
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'any'
-        },
-        {
-          src: maskable512,
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'maskable'
-        }
-      ]
-    };
-
-    const manifestBlob = new Blob([JSON.stringify(dynamicManifest, null, 2)], {
-      type: 'application/manifest+json'
-    });
-
-    if (previousManifestBlobUrl) {
-      URL.revokeObjectURL(previousManifestBlobUrl);
-    }
-    const newManifestUrl = URL.createObjectURL(manifestBlob);
-    previousManifestBlobUrl = newManifestUrl;
-
+    // 6. Ensure canonical HTTPS /manifest.webmanifest is maintained for Google WebAPK minting
     let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
     if (!manifestLink) {
       manifestLink = document.createElement('link');
       manifestLink.rel = 'manifest';
       document.head.appendChild(manifestLink);
     }
-    manifestLink.href = newManifestUrl;
+    // Must remain a real URL (/manifest.webmanifest), NOT a blob: URL,
+    // so Google's WebAPK minting server can download and generate an independent Android WebAPK.
+    manifestLink.href = '/manifest.webmanifest';
 
     // 7. Synchronize to Browser CacheStorage (Workbox & PWA caches) so background install fetch gets custom icon
     if ('caches' in window) {
@@ -186,6 +144,46 @@ export async function updateAppFavicon(logoUrl?: string, institutionName?: strin
           fetch(icon512).then(r => r.blob()),
           fetch(maskable512).then(r => r.blob())
         ]);
+
+        const dynamicManifest = {
+          id: '/',
+          name: appTitle,
+          short_name: 'E-SanguSantri',
+          description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
+          theme_color: '#047857',
+          background_color: '#047857',
+          display: 'standalone',
+          display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
+          prefer_related_applications: false,
+          categories: ['finance', 'education', 'productivity'],
+          icons: [
+            {
+              src: '/pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa-maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
+            }
+          ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(dynamicManifest, null, 2)], {
+          type: 'application/manifest+json'
+        });
 
         const cacheNames = await caches.keys();
         const targets = cacheNames.length > 0 ? cacheNames : ['pwa-custom-icons-v1'];

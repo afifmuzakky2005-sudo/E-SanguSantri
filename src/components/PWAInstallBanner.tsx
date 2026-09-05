@@ -54,7 +54,10 @@ export const PWAInstallPrompt: React.FC<PWAInstallProps> = ({
         </button>
 
         {showIOSGuide && (
-          <IOSInstallModal onClose={() => setShowIOSGuide(false)} />
+          <InstallGuideModal 
+            isIOS={isIOS}
+            onClose={() => setShowIOSGuide(false)} 
+          />
         )}
       </>
     );
@@ -64,8 +67,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallProps> = ({
   return null;
 };
 
-// Modal for iOS / Safari or browsers without beforeinstallprompt
-function IOSInstallModal({ onClose }: { onClose: () => void }) {
+// Modal guide for Android & iOS to ensure standalone WebAPK / app mode
+function InstallGuideModal({ isIOS, onClose }: { isIOS: boolean; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-emerald-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-emerald-100 text-slate-800 space-y-4 animate-in slide-in-from-bottom-8 sm:zoom-in-95 duration-300">
@@ -76,10 +79,10 @@ function IOSInstallModal({ onClose }: { onClose: () => void }) {
             </div>
             <div>
               <h3 className="text-sm font-black text-emerald-950 uppercase tracking-wide">
-                Pasang di HP / iPhone
+                {isIOS ? 'Pasang di iPhone / iPad' : 'Instal Aplikasi Mandiri (WebAPK)'}
               </h3>
               <p className="text-[10px] text-slate-500 font-semibold">
-                Jalankan seperti aplikasi mandiri asli
+                Aplikasi berdiri sendiri tanpa bilah browser
               </p>
             </div>
           </div>
@@ -92,38 +95,68 @@ function IOSInstallModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-3 text-xs text-slate-600">
-          <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
-            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
-              1
-            </div>
-            <div>
-              <p className="font-bold text-emerald-950">Buka Menu Browser</p>
-              <p className="text-[11px] text-slate-600 mt-0.5">
-                Tekan tombol <span className="font-black text-emerald-800">Bagikan (Share)</span> <Share className="inline w-3.5 h-3.5 mx-0.5 text-blue-600" /> di Safari iOS, atau titik tiga <span className="font-bold text-slate-700">⋮</span> di pojok kanan Chrome.
-              </p>
-            </div>
-          </div>
+          {isIOS ? (
+            <>
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  1
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-950">Buka Menu Bagikan</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Buka website ini di Safari, lalu tekan tombol <span className="font-black text-emerald-800">Bagikan (Share)</span> <Share className="inline w-3.5 h-3.5 mx-0.5 text-blue-600" /> di bagian bawah.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  2
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-950">Pilih Tambah ke Layar Utama</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Gulir ke bawah dan pilih <span className="font-black text-emerald-800">"Tambah ke Layar Utama"</span> <PlusSquare className="inline w-3.5 h-3.5 mx-0.5 text-emerald-700" />.
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  1
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-950">Buka di Browser Google Chrome</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Pastikan Anda membuka website ini langsung di aplikasi <strong>Google Chrome</strong> (bukan di dalam browser aplikasi pesan seperti WhatsApp).
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                  2
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-950">Pilih "Instal Aplikasi"</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Tekan tombol menu titik tiga <span className="font-black text-slate-800">⋮</span> di pojok kanan atas Chrome, lalu pilih <span className="font-black text-emerald-800">"Instal Aplikasi"</span> (bukan sekadar pintasan).
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
             <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
-              2
+              ✓
             </div>
             <div>
-              <p className="font-bold text-emerald-950">Tambahkan ke Layar Utama</p>
+              <p className="font-bold text-emerald-950">Aplikasi Mandiri Aktif</p>
               <p className="text-[11px] text-slate-600 mt-0.5">
-                Pilih menu <span className="font-black text-emerald-800">"Tambah ke Layar Utama"</span> <PlusSquare className="inline w-3.5 h-3.5 mx-0.5 text-emerald-700" /> atau <span className="font-bold text-slate-700">"Install Aplikasi"</span>.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100">
-            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
-              3
-            </div>
-            <div>
-              <p className="font-bold text-emerald-950">Selesai!</p>
-              <p className="text-[11px] text-slate-600 mt-0.5">
-                Ikon aplikasi E-Sangu akan muncul di layar HP Anda dan siap dibuka tanpa tab browser.
+                Aplikasi akan dipasang ke daftar aplikasi HP sebagai aplikasi mandiri (WebAPK) dengan jendela penuh tanpa bilah URL browser.
               </p>
             </div>
           </div>
@@ -133,7 +166,7 @@ function IOSInstallModal({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-900/10 hover:from-emerald-700 hover:to-teal-700 cursor-pointer"
         >
-          Mengerti, Tutup Panduan
+          Mengerti, Tutup
         </button>
       </div>
     </div>

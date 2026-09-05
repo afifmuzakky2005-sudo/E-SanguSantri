@@ -11,18 +11,29 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'favicon.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+        injectRegister: 'auto',
+        includeAssets: [
+          'favicon.svg',
+          'favicon.png',
+          'apple-touch-icon.png',
+          'pwa-192x192.png',
+          'pwa-512x512.png',
+          'pwa-maskable-512x512.png'
+        ],
         manifest: {
           id: '/',
-          name: 'E-Sangu Santri',
-          short_name: 'E-Sangu Santri',
+          name: 'E-SanguSantri - Pondok Pesantren',
+          short_name: 'E-SanguSantri',
           description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
           theme_color: '#047857',
-          background_color: '#f8fafc',
+          background_color: '#047857',
           display: 'standalone',
+          display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
           orientation: 'portrait',
           start_url: '/',
           scope: '/',
+          prefer_related_applications: false,
+          categories: ['finance', 'education', 'productivity'],
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -45,6 +56,9 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          clientsClaim: true,
+          skipWaiting: true,
+          cleanupOutdatedCaches: true,
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           navigateFallback: '/index.html',
