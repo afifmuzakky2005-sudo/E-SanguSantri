@@ -85,6 +85,12 @@ try {
   if (fs.existsSync(path.join(publicDir, 'pwa-maskable-512x512.png'))) {
     customIconMaskable = fs.readFileSync(path.join(publicDir, 'pwa-maskable-512x512.png'));
   }
+  if (fs.existsSync(path.join(publicDir, 'apple-touch-icon.png'))) {
+    customAppleIcon = fs.readFileSync(path.join(publicDir, 'apple-touch-icon.png'));
+  }
+  if (fs.existsSync(path.join(publicDir, 'favicon.png'))) {
+    customFavicon = fs.readFileSync(path.join(publicDir, 'favicon.png'));
+  }
 } catch (e) {
   console.debug('Initial icon load notice:', e);
 }
@@ -92,6 +98,18 @@ try {
 // API: Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', hasCustomIcons: !!customIcon192 });
+});
+
+// Route for default logo
+app.get('/default-logo.png', (req, res, next) => {
+  const defaultPath = path.join(process.cwd(), 'public', 'default-logo.png');
+  if (fs.existsSync(defaultPath)) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(defaultPath);
+    return;
+  }
+  next();
 });
 
 // API: Update PWA Icon and Web App Manifest
@@ -104,7 +122,7 @@ app.post('/api/update-pwa-icon', async (req, res) => {
       return;
     }
 
-    // Extract base64 image data
+    // Extract base64 image data or file buffer
     let imageBuffer: Buffer;
     if (logoUrl.startsWith('data:image/')) {
       const base64Data = logoUrl.replace(/^data:image\/\w+;base64,/, '');
@@ -113,8 +131,19 @@ app.post('/api/update-pwa-icon', async (req, res) => {
       const response = await fetch(logoUrl);
       const arrayBuffer = await response.arrayBuffer();
       imageBuffer = Buffer.from(arrayBuffer);
+    } else if (logoUrl.startsWith('/')) {
+      const filePath = path.join(process.cwd(), 'public', logoUrl.replace(/^\//, ''));
+      if (fs.existsSync(filePath)) {
+        imageBuffer = fs.readFileSync(filePath);
+      } else {
+        imageBuffer = fs.readFileSync(path.join(process.cwd(), 'public', 'default-logo.png'));
+      }
     } else {
-      imageBuffer = Buffer.from(logoUrl, 'base64');
+      try {
+        imageBuffer = Buffer.from(logoUrl, 'base64');
+      } catch {
+        imageBuffer = fs.readFileSync(path.join(process.cwd(), 'public', 'default-logo.png'));
+      }
     }
 
     // 1. Generate 192x192 standard icon (purpose: 'any')

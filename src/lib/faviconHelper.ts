@@ -51,7 +51,7 @@ export function generateSizedIcon(imgSrc: string, size: number, safePadding = 0)
 export async function updateAppFavicon(logoUrl?: string, institutionName?: string) {
   if (typeof document === 'undefined') return;
 
-  const url = logoUrl && logoUrl.trim().length > 0 ? logoUrl : '/favicon.png';
+  const url = logoUrl && logoUrl.trim().length > 0 ? logoUrl : '/default-logo.png';
   const appTitle = institutionName && institutionName.trim().length > 0 
     ? `E-SanguSantri - ${institutionName.trim()}`
     : 'E-SanguSantri';
@@ -205,22 +205,20 @@ export async function updateAppFavicon(logoUrl?: string, institutionName?: strin
       }
     }
 
-    // 8. Synchronize to Backend Server so Google WebAPK Minting Service receives the real uploaded logo
-    if (logoUrl && logoUrl.trim().length > 0) {
-      try {
-        fetch('/api/update-pwa-icon', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            logoUrl: url,
-            institutionName: institutionName || 'Pondok Pesantren'
-          })
-        }).catch(err => {
-          console.debug('Backend PWA icon sync notice:', err);
-        });
-      } catch (postErr) {
-        console.debug('Failed to trigger backend PWA icon sync:', postErr);
-      }
+    // 8. Synchronize to Backend Server so Google WebAPK Minting Service receives the current or default logo
+    try {
+      fetch('/api/update-pwa-icon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logoUrl: url,
+          institutionName: institutionName || 'Pondok Pesantren'
+        })
+      }).catch(err => {
+        console.debug('Backend PWA icon sync notice:', err);
+      });
+    } catch (postErr) {
+      console.debug('Failed to trigger backend PWA icon sync:', postErr);
     }
   } catch (err) {
     console.warn('Dynamic PWA manifest update notice:', err);

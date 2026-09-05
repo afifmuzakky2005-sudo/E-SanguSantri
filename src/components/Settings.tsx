@@ -367,18 +367,38 @@ export default function Settings({
                   {instLogo ? (
                     <img src={instLogo} alt="Logo Preview" className="w-full h-full object-contain p-1" />
                   ) : (
-                    <span className="text-[9px] text-emerald-600 font-black">NO LOGO</span>
+                    <img src="/default-logo.png" alt="Default Logo" className="w-full h-full object-contain p-1" title="Logo Default Sistem" />
                   )}
                 </div>
                 <div className="flex-1 space-y-1">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="block w-full text-[10px] text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer transition-all"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="block w-full text-[10px] text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer transition-all"
+                    />
+                    {instLogo && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInstLogo('');
+                          onSaveInstitution({
+                            ...institution,
+                            logoUrl: ''
+                          });
+                          updateAppFavicon('', instName);
+                          triggerSuccess('Logo dikembalikan ke Icon Default E-SanguSantri!');
+                        }}
+                        className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[10px] font-bold shrink-0 transition"
+                        title="Kembalikan ke icon default sistem"
+                      >
+                        Reset Default
+                      </button>
+                    )}
+                  </div>
                   <p className="text-[9px] text-gray-500 font-medium">
-                    * Mendukung gambar PNG asli tanpa penambahan background dan tanpa menghapus warna putih gambar. Langsung disinkronkan ke favicon tab browser serta ikon aplikasi E-Sangu Santri.
+                    * {instLogo ? 'Logo custom pesantren aktif.' : 'Sedang menggunakan icon default sistem.'} Mendukung gambar PNG asli. Langsung disinkronkan ke favicon tab browser serta ikon aplikasi PWA/WebAPK.
                   </p>
                 </div>
               </div>

@@ -393,7 +393,14 @@ export default function AdminPanel({
           <div className="p-5 bg-emerald-900 flex items-center justify-between border-b border-emerald-800">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/10 flex items-center justify-center font-black text-white text-xl shadow-sm border border-emerald-700/60 overflow-hidden shrink-0 rounded-xl backdrop-blur-sm">
-                {institution.logoUrl ? <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" /> : 'S'}
+                <img 
+                  src={institution.logoUrl || '/default-logo.png'} 
+                  alt="Logo" 
+                  className="w-full h-full object-contain p-1" 
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/default-logo.png';
+                  }}
+                />
               </div>
               <div>
                 <h1 className="font-black text-lg tracking-tighter uppercase leading-none">
@@ -655,7 +662,14 @@ export default function AdminPanel({
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
             <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-black text-white text-xs border border-emerald-700/60 shrink-0 overflow-hidden backdrop-blur-sm">
-              {institution.logoUrl ? <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" /> : 'S'}
+              <img 
+                src={institution.logoUrl || '/default-logo.png'} 
+                alt="Logo" 
+                className="w-full h-full object-contain p-0.5" 
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/default-logo.png';
+                }}
+              />
             </div>
             <span className="font-black text-xs tracking-tight uppercase truncate">
               <span className="text-white">E</span>

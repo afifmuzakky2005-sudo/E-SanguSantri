@@ -83,11 +83,14 @@ export default function Login({ isOpen, onClose, onLogin, logoUrl }: LoginProps)
                   transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.3 }}
                   className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-900/10 border border-emerald-50 overflow-hidden p-2 mx-auto"
                 >
-                  {logoUrl ? (
-                    <img src={logoUrl} alt="Logo" className="w-full h-full object-cover rounded-xl bg-white" />
-                  ) : (
-                    <Shield className="w-10 h-10 text-emerald-800" />
-                  )}
+                  <img 
+                    src={logoUrl || '/default-logo.png'} 
+                    alt="Logo" 
+                    className="w-full h-full object-contain rounded-xl bg-white" 
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/default-logo.png';
+                    }}
+                  />
                 </motion.div>
               </div>
               

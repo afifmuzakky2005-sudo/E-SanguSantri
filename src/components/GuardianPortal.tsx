@@ -351,11 +351,14 @@ export default function GuardianPortal({
         <div className="max-w-6xl mx-auto px-3.5 py-3 md:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/80 text-emerald-900 font-black flex items-center justify-center shadow-md text-base md:text-xl overflow-hidden shrink-0 border border-emerald-100/60">
-              {institution.logoUrl ? (
-                <img src={institution.logoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" />
-              ) : (
-                'S'
-              )}
+              <img 
+                src={institution.logoUrl || '/default-logo.png'} 
+                alt="Logo" 
+                className="w-full h-full object-contain p-0.5" 
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/default-logo.png';
+                }}
+              />
             </div>
             <div className="min-w-0">
               <h1 className="font-black text-base md:text-lg tracking-tighter uppercase leading-none truncate">

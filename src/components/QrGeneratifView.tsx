@@ -207,11 +207,12 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
     ctx.fillStyle = '#064e3b';
     ctx.fillRect(10, 10, canvas.width - 20, 90);
 
-    // Logo if exists
-    if (institution.logoUrl) {
+    // Logo (custom or default)
+    const activeLogo = institution.logoUrl || '/default-logo.png';
+    if (activeLogo) {
       try {
         const img = new Image();
-        img.src = institution.logoUrl;
+        img.src = activeLogo;
         await new Promise((resolve) => {
           img.onload = resolve;
           img.onerror = resolve;
@@ -222,10 +223,6 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
         ctx.font = 'bold 36px Arial';
         ctx.fillText('🕌', 35, 65);
       }
-    } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 36px Arial';
-      ctx.fillText('🕌', 35, 65);
     }
 
     // Header Texts
@@ -298,18 +295,15 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
     doc.rect(5.5, 5.5, 94, 25, 'F');
 
     // Logo
-    if (institution.logoUrl) {
+    const cardPdfLogo = institution.logoUrl || '/default-logo.png';
+    if (cardPdfLogo) {
       try {
-        doc.addImage(institution.logoUrl, 'JPEG', 8, 8, 18, 18);
+        doc.addImage(cardPdfLogo, 'PNG', 8, 8, 18, 18);
       } catch (e) {
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(20);
         doc.text('🕌', 10, 20);
       }
-    } else {
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
-      doc.text('🕌', 10, 20);
     }
 
     // Header Titles

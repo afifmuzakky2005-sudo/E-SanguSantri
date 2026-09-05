@@ -328,11 +328,7 @@ export const printReceipt = (transaction: Transaction, santri: Santri, instituti
         <div class="receipt-container">
           <div class="receipt-header-modern">
             <div class="header-left">
-              ${institution.logoUrl ? `
-                <img src="${institution.logoUrl}" class="app-logo" alt="Logo" />
-              ` : `
-                <div class="app-logo-fallback">🕌</div>
-              `}
+              <img src="${institution.logoUrl || '/default-logo.png'}" class="app-logo" alt="Logo" onerror="this.src='/default-logo.png'" />
               <div class="app-info">
                 <div class="app-brand">E-SANGU SANTRI</div>
                 <div class="inst-name">${institution.name}</div>
@@ -697,11 +693,7 @@ export const printPassbook = (santri: Santri, transactions: Transaction[], insti
         <div class="passbook-container">
           <div class="pb-header-modern">
             <div class="pb-header-left">
-              ${institution.logoUrl ? `
-                <img src="${institution.logoUrl}" class="pb-logo" alt="Logo" />
-              ` : `
-                <div class="pb-logo-fallback">🕌</div>
-              `}
+              <img src="${institution.logoUrl || '/default-logo.png'}" class="pb-logo" alt="Logo" onerror="this.src='/default-logo.png'" />
               <div class="pb-branding">
                 <div class="pb-app-title">E-SANGU SANTRI</div>
                 <div class="pb-inst-title">${institution.name}</div>
