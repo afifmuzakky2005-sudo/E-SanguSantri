@@ -3,6 +3,7 @@ import { Database, Download, Upload, ShieldCheck, Zap, RefreshCw, AlertTriangle,
 import * as XLSX from 'xlsx';
 import { Santri, Transaction, InstitutionSettings, FinancialSettings, User } from '../types';
 import { calculateBalances } from '../data/mockData';
+import { formatDateDDMMYYYY, formatTimeHHMM } from '../lib/dateUtils';
 
 interface DatabaseBackupProps {
   students: Santri[];
@@ -248,8 +249,8 @@ export default function DatabaseBackup({
         const nis = s ? s.nis : '';
         return {
           'ID Transaksi': tx.id,
-          'Waktu': new Date(tx.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
-          'Tanggal': tx.date,
+          'Waktu': formatTimeHHMM(tx.timestamp) + ' WIB',
+          'Tanggal': formatDateDDMMYYYY(tx.date || tx.timestamp),
           'NIS': nis,
           'Nama Santri': tx.santriName,
           'Kelas': tx.santriClass,
@@ -325,7 +326,7 @@ export default function DatabaseBackup({
       const transactionsHtml = transactions.slice(0, 100).map(tx => {
         return `
           <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px;">
-            <td style="padding: 6px;">${tx.date}</td>
+            <td style="padding: 6px;">${formatDateDDMMYYYY(tx.date || tx.timestamp)}</td>
             <td style="padding: 6px;">${tx.id.substring(0, 8)}</td>
             <td style="padding: 6px;">${tx.santriName}</td>
             <td style="padding: 6px;">${tx.accountType}</td>
@@ -365,7 +366,7 @@ export default function DatabaseBackup({
             <div class="header">
               <h1 style="margin-bottom: 5px; color: #065f46;">\${institution.name}</h1>
               <p style="margin: 0; font-size: 12px; color: #64748b; letter-spacing: 1px;">SISTEM KEUANGAN E-SANGU SANTRI • LAPORAN DATABASE UTUH</p>
-              <p style="margin: 5px 0 0 0; font-size: 11px; font-weight: bold;">Tanggal Unduh: \${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p style="margin: 5px 0 0 0; font-size: 11px; font-weight: bold;">Tanggal Unduh: \${formatDateDDMMYYYY(new Date())}</p>
             </div>
 
             <div class="grid">

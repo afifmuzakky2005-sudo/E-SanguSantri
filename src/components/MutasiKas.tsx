@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Santri, Transaction, InstitutionSettings } from '../types';
 import { Search, Printer, Filter, Download, MessageSquare, ArrowUpDown, ArrowUp, ArrowDown, Eye, X, Image, Trash2, AlertTriangle, CheckCircle2, Upload, FileSpreadsheet } from 'lucide-react';
 import { printReceipt, formatTxId, parseWaTransactionTemplate, getWhatsAppLink } from '../lib/printHelper';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY, parseExcelDateToYYYYMMDD } from '../lib/dateUtils';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -47,8 +48,8 @@ export default function MutasiKas({
   const handleDownloadTemplate = () => {
     const wsData = [
       ['NIS', 'Aliran', 'Akun', 'Nominal', 'Biaya Admin', 'Tanggal', 'Catatan', 'Kasir'],
-      ['24001234', 'Setor', 'Tabungan', 100000, 0, '2026-09-05', 'Setoran awal tabungan', cashierName || 'Kasir'],
-      ['24005678', 'Tarik', 'Penitipan', 50000, 1000, '2026-09-05', 'Jajan mingguan', cashierName || 'Kasir']
+      ['24001234', 'Setor', 'Tabungan', 100000, 0, '05/09/2026', 'Setoran awal tabungan', cashierName || 'Kasir'],
+      ['24005678', 'Tarik', 'Penitipan', 50000, 1000, '05/09/2026', 'Jajan mingguan', cashierName || 'Kasir']
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -100,17 +101,18 @@ export default function MutasiKas({
         rawData.forEach((row: any, index: number) => {
           const normalizedRow: any = {};
           Object.keys(row).forEach(key => {
-            normalizedRow[key.trim().toLowerCase()] = String(row[key]).trim();
+            const normKey = key.trim().toLowerCase();
+            normalizedRow[normKey] = row[key];
           });
 
-          const rowNis = normalizedRow['nis'] || '';
-          const rowAliran = normalizedRow['aliran'] || normalizedRow['jenis'] || normalizedRow['type'] || '';
-          const rowAkun = normalizedRow['akun'] || normalizedRow['pos'] || normalizedRow['accounttype'] || '';
-          const rowNominal = normalizedRow['nominal'] || normalizedRow['jumlah'] || normalizedRow['amount'] || '';
-          const rowAdminFee = normalizedRow['biaya admin'] || normalizedRow['admin fee'] || normalizedRow['fee'] || '0';
-          const rowTanggal = normalizedRow['tanggal'] || normalizedRow['date'] || '';
-          const rowCatatan = normalizedRow['catatan'] || normalizedRow['keterangan'] || normalizedRow['note'] || '';
-          const rowKasir = normalizedRow['kasir'] || normalizedRow['cashier'] || cashierName;
+          const rowNis = String(normalizedRow['nis'] || '').trim();
+          const rowAliran = String(normalizedRow['aliran'] || normalizedRow['jenis'] || normalizedRow['type'] || '').trim();
+          const rowAkun = String(normalizedRow['akun'] || normalizedRow['pos'] || normalizedRow['accounttype'] || '').trim();
+          const rowNominal = String(normalizedRow['nominal'] || normalizedRow['jumlah'] || normalizedRow['amount'] || '').trim();
+          const rowAdminFee = String(normalizedRow['biaya admin'] || normalizedRow['admin fee'] || normalizedRow['fee'] || '0').trim();
+          const rowTanggal = normalizedRow['tanggal'] ?? normalizedRow['date'] ?? normalizedRow['tgl'] ?? '';
+          const rowCatatan = String(normalizedRow['catatan'] || normalizedRow['keterangan'] || normalizedRow['note'] || '').trim();
+          const rowKasir = String(normalizedRow['kasir'] || normalizedRow['cashier'] || cashierName).trim();
 
           const rowErrors: string[] = [];
 
@@ -169,17 +171,13 @@ export default function MutasiKas({
             rowErrors.push(`Biaya admin "${rowAdminFee}" tidak valid (harus angka positif atau 0)`);
           }
 
-          // 6. Validasi Tanggal
-          let finalDate = rowTanggal;
-          if (rowTanggal) {
-            const dateObj = new Date(rowTanggal);
-            if (isNaN(dateObj.getTime())) {
-              rowErrors.push(`Tanggal "${rowTanggal}" tidak valid (format harus YYYY-MM-DD)`);
-            } else {
-              finalDate = dateObj.toISOString().split('T')[0];
-            }
+          // 6. Validasi Tanggal (Mendukung DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, nomor serial Excel, objek Date, teks bulan Indonesia)
+          let finalDate = '';
+          const dateResult = parseExcelDateToYYYYMMDD(rowTanggal);
+          if (!dateResult.isValid) {
+            rowErrors.push(dateResult.error || `Tanggal "${rowTanggal}" tidak valid (gunakan format DD/MM/YYYY)`);
           } else {
-            finalDate = new Date().toISOString().split('T')[0];
+            finalDate = dateResult.dateStr;
           }
 
           if (rowErrors.length === 0) {
@@ -363,12 +361,9 @@ export default function MutasiKas({
   const formatDateTime = (timestamp?: string, fallbackDate?: string) => {
     if (!timestamp && !fallbackDate) return '-';
     if (timestamp) {
-      const d = new Date(timestamp);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-      }
+      return formatDateTimeDDMMYYYY(timestamp);
     }
-    return fallbackDate || '-';
+    return formatDateDDMMYYYY(fallbackDate);
   };
 
   const handleSort = (field: typeof sortField) => {
@@ -405,7 +400,7 @@ export default function MutasiKas({
       return {
         'ID Transaksi': formatTxId(tx.id, safeTransactions),
         'Waktu': formatTime(tx.timestamp),
-        'Tanggal': tx.date || '',
+        'Tanggal': formatDateDDMMYYYY(tx.date || tx.timestamp),
         'NIS': nis,
         'Nama Santri': tx.santriName || '',
         'Kelas': tx.santriClass || '',
@@ -615,7 +610,7 @@ export default function MutasiKas({
 
                       {/* 2. TANGGAL & WAKTU */}
                       <td className="p-5">
-                        <div className="font-bold text-emerald-950 font-mono">{tx.date || (tx.timestamp ? tx.timestamp.split('T')[0] : '-')}</div>
+                        <div className="font-bold text-emerald-950 font-mono">{formatDateDDMMYYYY(tx.date || tx.timestamp)}</div>
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">
                           {formatTime(tx.timestamp)} WIB
                         </div>
@@ -1133,7 +1128,7 @@ export default function MutasiKas({
                                 <td className="px-3 py-2 text-right font-mono font-semibold text-slate-500">
                                   {isNaN(item.adminFee) ? '-' : `Rp${item.adminFee.toLocaleString('id-ID')}`}
                                 </td>
-                                <td className="px-3 py-2 font-mono text-slate-600">{item.date || '-'}</td>
+                                <td className="px-3 py-2 font-mono text-slate-600">{formatDateDDMMYYYY(item.date)}</td>
                                 <td className="px-3 py-2">
                                   {hasErr ? (
                                     <div className="text-[10px] text-rose-600 font-semibold space-y-0.5">

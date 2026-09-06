@@ -3,6 +3,7 @@ import { ActivityLog } from '../types';
 import { Search, Download, Filter, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY, formatTimeHHMM } from '../lib/dateUtils';
 
 interface ActivityLogViewProps {
   activityLogs: ActivityLog[];
@@ -41,7 +42,7 @@ export default function ActivityLogView({ activityLogs }: ActivityLogViewProps) 
 
   const handleDownloadExcel = () => {
     const dataToExport = filteredLogs.map((log) => ({
-      'TANGGAL & WAKTU': log.timestamp && !isNaN(new Date(log.timestamp).getTime()) ? new Date(log.timestamp).toLocaleString('id-ID') : '-',
+      'TANGGAL & WAKTU': log.timestamp && !isNaN(new Date(log.timestamp).getTime()) ? formatDateTimeDDMMYYYY(log.timestamp) : '-',
       'NAMA PENGGUNA': log.user || '-',
       'ROLE': log.role || '-',
       'AKTIFITAS': log.action || '-',
@@ -171,12 +172,12 @@ export default function ActivityLogView({ activityLogs }: ActivityLogViewProps) 
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-700 text-xs">
                           {log.timestamp && !isNaN(new Date(log.timestamp).getTime())
-                            ? new Date(log.timestamp).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })
+                            ? formatDateDDMMYYYY(log.timestamp)
                             : '-'}
                         </div>
                         <div className="text-[10px] text-gray-500 font-medium">
                           {log.timestamp && !isNaN(new Date(log.timestamp).getTime())
-                            ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                            ? `${formatTimeHHMM(log.timestamp)} WIB`
                             : ''}
                         </div>
                       </td>

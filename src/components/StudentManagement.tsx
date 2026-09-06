@@ -5,6 +5,7 @@ import { Search, UserPlus, MessageCircle, Users, FileDown, FileUp, Edit2, Trash2
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { printPassbook } from '../lib/printHelper';
+import { formatDateDDMMYYYY } from '../lib/dateUtils';
 
 interface StudentManagementProps {
   students: Santri[];
@@ -945,7 +946,7 @@ export default function StudentManagement({
                             .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                             .map((tx) => (
                             <tr key={tx.id} className="hover:bg-teal-50/20">
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-400">{new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'short' })}</td>
+                              <td className="px-4 py-2 text-[9px] font-mono text-gray-400">{formatDateDDMMYYYY(tx.timestamp || tx.date)}</td>
                               <td className={`px-4 py-2 text-[10px] font-black ${tx.type === 'Setor' ? 'text-teal-600' : 'text-red-600'}`}>
                                 {tx.type === 'Setor' ? 'SETOR' : 'TARIK'}
                               </td>
@@ -990,7 +991,7 @@ export default function StudentManagement({
                             .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                             .map((tx) => (
                             <tr key={tx.id} className="hover:bg-emerald-50/20">
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-400">{new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'short' })}</td>
+                              <td className="px-4 py-2 text-[9px] font-mono text-gray-400">{formatDateDDMMYYYY(tx.timestamp || tx.date)}</td>
                               <td className={`px-4 py-2 text-[10px] font-black ${tx.type === 'Setor' ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {tx.type === 'Setor' ? 'SETOR' : 'TARIK'}
                               </td>

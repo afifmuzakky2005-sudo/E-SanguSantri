@@ -3,6 +3,7 @@ import { Santri, Transaction, FinancialSettings, AccountType, InstitutionSetting
 import { calculateBalances } from '../data/mockData';
 import { Search, CircleDollarSign, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, ShieldAlert, CheckCircle, FileText, X, ChevronRight, History, Receipt, ArrowRight, MessageSquare, Camera } from 'lucide-react';
 import { printReceipt, parseWaTransactionTemplate, getWhatsAppLink, formatTxId } from '../lib/printHelper';
+import { formatDateDDMMYYYY } from '../lib/dateUtils';
 import { playSetorSound, playTarikSound, playSuccessSound, playErrorSound } from '../lib/soundHelper';
 import { motion, AnimatePresence } from 'motion/react';
 import { QrScannerModal } from './QrScannerModal';
@@ -1198,7 +1199,7 @@ export default function Transactions({
                       <tr key={tx.id} className="hover:bg-emerald-50/20 transition">
                         <td className="py-3 px-2 font-mono font-bold text-gray-500">
                           {new Date(tx.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                          <span className="block text-[8px] text-gray-400">{tx.date}</span>
+                          <span className="block text-[8px] text-gray-400">{formatDateDDMMYYYY(tx.date || tx.timestamp)}</span>
                         </td>
                         <td className="py-3 px-2 font-mono font-bold text-emerald-850">
                           {formatTxId(tx.id, transactions)}

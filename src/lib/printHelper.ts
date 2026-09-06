@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { Transaction, Santri, InstitutionSettings } from '../types';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from './dateUtils';
 
 export function formatTxId(txId: string, transactionsList: Transaction[] = []): string {
   if (!txId) return '';
@@ -61,8 +62,8 @@ export function parseWaTransactionTemplate(
   const formattedId = formatTxId(transaction.id, transactionsList);
   const txDate = transaction.timestamp ? new Date(transaction.timestamp) : new Date();
   const formattedWaktu = !isNaN(txDate.getTime()) 
-    ? txDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-    : (transaction.date || '-');
+    ? formatDateTimeDDMMYYYY(txDate)
+    : (transaction.date ? formatDateDDMMYYYY(transaction.date) : '-');
   
   const netAmt = Number(transaction.netAmount) || 0;
   const adminFee = Number(transaction.adminFee) || 0;
@@ -374,7 +375,7 @@ export const printReceipt = (transaction: Transaction, santri: Santri, instituti
           <div class="section">
             <div class="row">
               <span class="label">Tanggal & Waktu</span>
-              <span class="value">${new Date(transaction.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              <span class="value">${formatDateTimeDDMMYYYY(transaction.timestamp || transaction.date)}</span>
             </div>
             <div class="row">
               <span class="label">Akun Dana</span>
@@ -471,7 +472,7 @@ export const printPassbook = (santri: Santri, transactions: Transaction[], insti
     return `
       <tr>
         <td class="font-mono text-gray-500" style="font-size: 11px;">${formatTxId(tx.id, transactions)}</td>
-        <td class="font-mono text-gray-600">${new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
+        <td class="font-mono text-gray-600">${formatDateTimeDDMMYYYY(tx.timestamp)}</td>
         <td class="text-right text-emerald-600 font-bold font-mono">${tx.type === 'Setor' ? tx.amount.toLocaleString('id-ID') : '-'}</td>
         <td class="text-right text-rose-600 font-bold font-mono">${tx.type === 'Tarik' ? tx.amount.toLocaleString('id-ID') : '-'}</td>
         <td class="text-right text-slate-800 font-black font-mono">${balance.toLocaleString('id-ID')}</td>
@@ -751,7 +752,7 @@ export const printPassbook = (santri: Santri, transactions: Transaction[], insti
               </tbody>
             </table>
             <div class="footer-note">
-              Dokumen dicetak secara otomatis oleh sistem e-sangu santri • ${new Date().toLocaleDateString('id-ID')}
+              Dokumen dicetak secara otomatis oleh sistem e-sangu santri • ${formatDateDDMMYYYY(new Date())}
             </div>
           </div>
         </div>

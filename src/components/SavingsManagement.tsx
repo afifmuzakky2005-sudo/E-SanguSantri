@@ -7,6 +7,7 @@ import { Search, MessageCircle, FileDown, Trash2, Printer, X, Filter, BookOpen, 
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { printPassbook, formatTxId } from '../lib/printHelper';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
 
 interface SavingsManagementProps {
   students: Santri[];
@@ -891,7 +892,7 @@ export default function SavingsManagement({
                           getMutasiTxs(activePrintStudent.id, 'Tabungan').map((tx) => (
                             <tr key={tx.id} className="hover:bg-teal-50/20">
                               <td className="px-4 py-2 text-[10px] font-mono text-teal-900">{formatTxId(tx.id, transactions)}</td>
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
                               <td className="px-4 py-2 text-right text-emerald-600 font-mono">{tx.type === 'Setor' ? formatCurrency(tx.amount) : '-'}</td>
                               <td className="px-4 py-2 text-right text-rose-600 font-mono">{tx.type === 'Tarik' ? formatCurrency(tx.amount) : '-'}</td>
                               <td className="px-4 py-2 text-right text-teal-950 font-mono">{formatCurrency(tx.currentBalance)}</td>
@@ -975,10 +976,7 @@ export default function SavingsManagement({
                             return studentRegs.map((reg) => (
                               <tr key={reg.id} className="hover:bg-gray-50 transition">
                                 <td className="px-3 py-2 font-bold text-teal-950 text-[10px]">
-                                  {new Date(reg.timestamp).toLocaleString('id-ID', {
-                                    dateStyle: 'medium',
-                                    timeStyle: 'short'
-                                  })}
+                                  {formatDateTimeDDMMYYYY(reg.timestamp)}
                                 </td>
                                 <td className="px-3 py-2 font-bold text-teal-950 text-right font-mono text-[10px]">
                                   {formatCurrency(reg.amount || 0)}
@@ -1063,7 +1061,7 @@ export default function SavingsManagement({
                           getMutasiTxs(activePrintStudent.id, 'Penitipan').map((tx) => (
                             <tr key={tx.id} className="hover:bg-emerald-50/20">
                               <td className="px-4 py-2 text-[10px] font-mono text-emerald-900">{formatTxId(tx.id, transactions)}</td>
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
                               <td className="px-4 py-2 text-right text-emerald-600 font-mono">{tx.type === 'Setor' ? formatCurrency(tx.amount) : '-'}</td>
                               <td className="px-4 py-2 text-right text-rose-600 font-mono">{tx.type === 'Tarik' ? formatCurrency(tx.amount) : '-'}</td>
                               <td className="px-4 py-2 text-right text-emerald-950 font-mono">{formatCurrency(tx.currentBalance)}</td>
@@ -1147,10 +1145,7 @@ export default function SavingsManagement({
                             return studentRegs.map((reg) => (
                               <tr key={reg.id} className="hover:bg-gray-50 transition">
                                 <td className="px-3 py-2 font-bold text-emerald-950 text-[10px]">
-                                  {new Date(reg.timestamp).toLocaleString('id-ID', {
-                                    dateStyle: 'medium',
-                                    timeStyle: 'short'
-                                  })}
+                                  {formatDateTimeDDMMYYYY(reg.timestamp)}
                                 </td>
                                 <td className="px-3 py-2 font-bold text-emerald-950 text-right font-mono text-[10px]">
                                   {formatCurrency(reg.amount || 0)}
@@ -1566,7 +1561,7 @@ export default function SavingsManagement({
                 </div>
                 <div className="flex justify-between items-center text-[11px]">
                   <span className="text-gray-500 font-medium">Waktu Transaksi:</span>
-                  <span className="font-mono text-gray-700">{new Date(txToDelete.timestamp).toLocaleString('id-ID')}</span>
+                  <span className="font-mono text-gray-700">{formatDateTimeDDMMYYYY(txToDelete.timestamp)}</span>
                 </div>
                 {txToDelete.note && (
                   <div className="pt-2 border-t border-rose-100 text-[10px] text-gray-600 italic">

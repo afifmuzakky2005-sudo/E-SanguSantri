@@ -21,6 +21,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
 
 interface RegistrationManagementProps {
   registrations: PendingRegistration[];
@@ -101,7 +102,7 @@ export default function RegistrationManagement({
     try {
       const dataToExport = (registrations || []).map((reg, idx) => ({
         'No': idx + 1,
-        'Tanggal': new Date(reg.timestamp).toLocaleString('id-ID'),
+        'Tanggal': formatDateTimeDDMMYYYY(reg.timestamp),
         'Jenis Pengajuan': reg.type || 'Buka Akun',
         'Nama Santri/Calon': reg.name,
         'Kelas': reg.className || '-',
@@ -159,7 +160,7 @@ export default function RegistrationManagement({
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 40, 60);
+      doc.text(`Dicetak pada: ${formatDateTimeDDMMYYYY(new Date())}`, 40, 60);
 
       const head = [[
         'No', 'Tanggal', 'Jenis', 'Nama Santri', 'Kelas', 'Nominal', 'Jenis Akun', 'Catatan Wali', 'Status', 'Alasan Tolak'
@@ -167,7 +168,7 @@ export default function RegistrationManagement({
 
       const body = (registrations || []).map((reg, idx) => [
         idx + 1,
-        new Date(reg.timestamp).toLocaleDateString('id-ID'),
+        formatDateDDMMYYYY(reg.timestamp),
         reg.type || 'Buka Akun',
         reg.name,
         reg.className || '-',
@@ -320,7 +321,7 @@ export default function RegistrationManagement({
                   filteredBukaAkun.map((reg) => (
                     <tr key={reg.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="p-4 font-mono text-gray-500 text-[11px]">
-                        {new Date(reg.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                        {formatDateTimeDDMMYYYY(reg.timestamp)}
                       </td>
                       <td className="p-4 font-black text-slate-900">{reg.name}</td>
                       <td className="p-4 text-emerald-850 font-extrabold">{reg.className}</td>
@@ -392,7 +393,7 @@ export default function RegistrationManagement({
                   filteredSetorDana.map((reg) => (
                     <tr key={reg.id} className="hover:bg-amber-50/10 transition-colors">
                       <td className="p-4 font-mono text-gray-500 text-[11px]">
-                        {new Date(reg.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                        {formatDateTimeDDMMYYYY(reg.timestamp)}
                       </td>
                       <td className="p-4 font-black text-slate-900">{reg.name}</td>
                       <td className="p-4 text-emerald-850 font-extrabold">{reg.className || '-'}</td>

@@ -18,6 +18,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDateDDMMYYYY } from '../lib/dateUtils';
 import { FileDown, FileText,
   LayoutDashboard,
   Users,
@@ -164,7 +165,7 @@ export default function AdminPanel({
       filename = 'Laporan_Akumulasi_Tabungan';
       wsData.push(['LAPORAN AKUMULASI TABUNGAN SANTRI']);
       wsData.push([institution.name]);
-      wsData.push([`Tanggal Unduh: ${new Date().toLocaleDateString('id-ID')}`]);
+      wsData.push([`Tanggal Unduh: ${formatDateDDMMYYYY(new Date())}`]);
       wsData.push([]);
       wsData.push(['No', 'NIS', 'Nama Santri', 'Kelas', 'Kamar / Asrama', 'Saldo Tabungan', 'Status Rekening']);
       
@@ -184,7 +185,7 @@ export default function AdminPanel({
       filename = 'Laporan_Akumulasi_Penitipan';
       wsData.push(['LAPORAN AKUMULASI PENITIPAN OPERASIONAL']);
       wsData.push([institution.name]);
-      wsData.push([`Tanggal Unduh: ${new Date().toLocaleDateString('id-ID')}`]);
+      wsData.push([`Tanggal Unduh: ${formatDateDDMMYYYY(new Date())}`]);
       wsData.push([]);
       wsData.push(['No', 'NIS', 'Nama Santri', 'Kelas', 'Kamar / Asrama', 'Saldo Titipan', 'Status Rekening']);
       
@@ -204,7 +205,7 @@ export default function AdminPanel({
       filename = 'Rekap_Pendapatan_Admin_Fee';
       wsData.push(['REKAP LAPORAN PENDAPATAN BIAYA ADMINISTRASI']);
       wsData.push([institution.name]);
-      wsData.push([`Tanggal Unduh: ${new Date().toLocaleDateString('id-ID')}`]);
+      wsData.push([`Tanggal Unduh: ${formatDateDDMMYYYY(new Date())}`]);
       wsData.push([]);
       wsData.push(['ID Transaksi', 'Tanggal', 'Nama Santri', 'Kelas', 'Jenis Akun', 'Biaya Admin', 'Kasir / Petugas']);
       
@@ -212,7 +213,7 @@ export default function AdminPanel({
       adminTx.forEach((t, idx) => {
         wsData.push([
           `TX${String(idx + 1).padStart(7, '0')}`,
-          t.date,
+          formatDateDDMMYYYY(t.date || t.timestamp),
           t.santriName,
           t.santriClass,
           t.accountType,
@@ -306,7 +307,7 @@ export default function AdminPanel({
         head = [['ID Transaksi', 'Tanggal', 'Santri (Kelas)', 'Jenis Akun', 'Biaya Admin', 'Kasir']];
         const adminTx = transactions.filter(t => (t.adminFee || 0) > 0);
         body = adminTx.map((t, idx) => {
-          return [`TX${String(idx + 1).padStart(7, '0')}`, t.date, `${t.santriName} (${t.santriClass})`, t.accountType, formatCurrency(t.adminFee), t.cashierName];
+          return [`TX${String(idx + 1).padStart(7, '0')}`, formatDateDDMMYYYY(t.date || t.timestamp), `${t.santriName} (${t.santriClass})`, t.accountType, formatCurrency(t.adminFee), t.cashierName];
         });
 
         doc.text(title, pageWidth / 2, 40, { align: 'center' });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Santri, Transaction, InstitutionSettings, FinancialSettings, PendingRegistration } from '../types';
 import { calculateBalances } from '../data/mockData';
 import { printPassbook, formatTxId } from '../lib/printHelper';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
 import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
 import { LogIn, KeyRound, Phone, CheckCircle2, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, Search, Info, UserPlus, MessageSquare, X, CheckCircle, Shield, BookOpen, Activity, TrendingUp, Sparkles, LogOut, User, Camera, QrCode, AlertCircle, PlusCircle, Upload, Image as ImageIcon, Clock, ChevronRight, Eye } from 'lucide-react';
 import { AllocationPieChart } from './VisualCharts';
@@ -1017,7 +1018,7 @@ export default function GuardianPortal({
                         {filteredTransactions.length > 0 ? (
                           filteredTransactions.map((tx) => (
                             <tr key={tx.id} className="hover:bg-white/30 transition-colors">
-                              <td className="p-3 font-mono text-emerald-900/60 text-[10px]">{tx.date}</td>
+                              <td className="p-3 font-mono text-emerald-900/60 text-[10px]">{formatDateDDMMYYYY(tx.date || tx.timestamp)}</td>
                               <td className="p-3">
                                 <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black border ${
                                   tx.accountType === 'Tabungan' ? 'bg-teal-50/80 text-teal-850 border-teal-200/50' : 'bg-emerald-50/80 text-emerald-800 border-emerald-200/50'
@@ -1123,7 +1124,7 @@ export default function GuardianPortal({
                               getMutasiTxs(loggedInStudent.id, passbookTab).map((tx) => (
                                 <tr key={tx.id} className="hover:bg-teal-50/20">
                                   <td className="px-4 py-2 text-[10px] font-mono text-teal-900">{formatTxId(tx.id, transactions)}</td>
-                                  <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{new Date(tx.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                  <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
                                   <td className="px-4 py-2 text-right text-emerald-600 font-mono">{tx.type === 'Setor' ? formatCurrency(tx.amount) : '-'}</td>
                                   <td className="px-4 py-2 text-right text-rose-600 font-mono">{tx.type === 'Tarik' ? formatCurrency(tx.amount) : '-'}</td>
                                   <td className="px-4 py-2 text-right text-teal-950 font-mono">{formatCurrency(tx.currentBalance)}</td>
@@ -1247,13 +1248,7 @@ export default function GuardianPortal({
                         </td>
                         <td className="p-3 font-mono text-gray-600">{reg.guardianPhone || '-'}</td>
                         <td className="p-3 text-gray-500 font-medium">
-                          {new Date(reg.timestamp).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {formatDateTimeDDMMYYYY(reg.timestamp)}
                         </td>
                         <td className="p-3 text-center">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold ${
@@ -1557,13 +1552,7 @@ export default function GuardianPortal({
                         return sDeps.map((dep) => (
                           <tr key={dep.id} className="hover:bg-slate-50/50">
                             <td className="p-3 font-mono text-[10px] text-gray-500">
-                              {new Date(dep.timestamp).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {formatDateTimeDDMMYYYY(dep.timestamp)}
                             </td>
                             <td className="p-3">
                               <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
