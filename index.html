@@ -2,22 +2,36 @@
 <html lang="id">
   <head>
     <script>
-      // Filter out benign [vite] websocket connection warnings in sandboxed preview iframe
+      // Filter out benign [vite] websocket / HMR connection logs in sandboxed preview iframe
       (function() {
-        const origError = console.error;
-        console.error = function(...args) {
-          if (typeof args[0] === 'string' && args[0].includes('[vite]')) {
-            return;
-          }
-          origError.apply(console, args);
+        const checkVite = (val) => {
+          if (!val) return false;
+          if (typeof val === 'string' && (val.includes('[vite]') || val.includes('failed to connect to websocket'))) return true;
+          if (typeof val === 'object' && val.message && typeof val.message === 'string' && (val.message.includes('[vite]') || val.message.includes('failed to connect to websocket'))) return true;
+          return false;
         };
-        const origWarn = console.warn;
-        console.warn = function(...args) {
-          if (typeof args[0] === 'string' && args[0].includes('[vite]')) {
-            return;
+
+        ['error', 'warn', 'info', 'log', 'debug'].forEach((method) => {
+          const orig = console[method];
+          console[method] = function(...args) {
+            if (args.some(checkVite)) return;
+            orig.apply(console, args);
+          };
+        });
+
+        window.addEventListener('error', function(e) {
+          if (checkVite(e.message) || checkVite(e.error)) {
+            e.preventDefault();
+            e.stopPropagation();
           }
-          origWarn.apply(console, args);
-        };
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          if (checkVite(e.reason)) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
       })();
     </script>
     <meta charset="UTF-8" />

@@ -325,6 +325,43 @@ export default function App() {
     return nextTx;
   };
 
+  const handleAddTransactions = (newTxs: (Omit<Transaction, 'id' | 'timestamp'> & { timestamp?: string })[]) => {
+    const nextTxs: Transaction[] = newTxs.map((newTx, index) => {
+      const timestamp = newTx.timestamp || new Date().toISOString();
+      return {
+        ...newTx,
+        id: 'tx_' + (Date.now() + index).toString() + '_' + Math.floor(Math.random() * 1000000).toString(),
+        timestamp,
+        note: newTx.note ? (newTx.note.trim() || '-') : '-',
+      };
+    });
+
+    setTransactions(prev => [...nextTxs, ...prev]);
+    saveFirebaseData({ transactions: nextTxs });
+
+    // Sync students: mark any student involved as having active savings
+    const santriIds = Array.from(new Set(newTxs.map(t => t.santriId)));
+    setStudents(prev => {
+      const toUpdate: Santri[] = [];
+      const updated = prev.map(s => {
+        if (santriIds.includes(s.id) && (!s.hasSavings || !s.savingsActive)) {
+          const updatedS = { ...s, hasSavings: true, savingsActive: true };
+          toUpdate.push(updatedS);
+          return updatedS;
+        }
+        return s;
+      });
+      if (toUpdate.length > 0) {
+        saveFirebaseData({ santri: toUpdate });
+      }
+      return updated;
+    });
+
+    if (loggedInAdmin) {
+      addLog(loggedInAdmin.name, loggedInAdmin.role, 'Impor Transaksi Massal', `Berhasil mengimpor ${nextTxs.length} transaksi mutasi kas harian`);
+    }
+  };
+
   const handleDeleteTransaction = (txId: string) => {
     const txToDelete = transactions.find(t => t.id === txId);
     if (!txToDelete) return;
@@ -674,6 +711,7 @@ export default function App() {
                 onDeleteStudent={handleDeleteStudent}
                 onBulkDeleteStudents={handleBulkDeleteStudents}
                 onAddTransaction={handleAddTransaction}
+                onAddTransactions={handleAddTransactions}
                 onDeleteTransaction={handleDeleteTransaction}
                 onSaveInstitution={handleSaveInstitution}
                 onSaveFinancial={handleSaveFinancial}
