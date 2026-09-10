@@ -48,9 +48,14 @@ export default function Settings({
   const [finSavingsBookFee, setFinSavingsBookFee] = useState(financial.savingsBookFeeAmount || 5000);
   const [finMaxDepositAmt, setFinMaxDepositAmt] = useState(financial.maxDepositAmount || 500000);
   const [finQrBalanceCheckEnabled, setFinQrBalanceCheckEnabled] = useState(financial.qrBalanceCheckEnabled ?? true);
-  const [finBalanceCheckMethod, setFinBalanceCheckMethod] = useState<'manual' | 'qr' | 'both'>(
-    financial.balanceCheckMethod || (financial.qrBalanceCheckEnabled === false ? 'manual' : 'both')
-  );
+  const [finBalanceCheckMethod, setFinBalanceCheckMethod] = useState<'all' | 'manual' | 'camera' | 'scanner'>(() => {
+    const raw = financial.balanceCheckMethod;
+    if (raw === 'camera' || raw === 'qr') return 'camera';
+    if (raw === 'scanner') return 'scanner';
+    if (raw === 'manual') return 'manual';
+    if (financial.qrBalanceCheckEnabled === false) return 'manual';
+    return 'all';
+  });
   const [finAllowDeleteWithBalance, setFinAllowDeleteWithBalance] = useState(financial.allowDeleteWithBalance ?? false);
 
   // Class settings state
@@ -592,25 +597,25 @@ export default function Settings({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                {/* Option 1: Both */}
-                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'both' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+                {/* Option 1: All */}
+                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'all' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
                   <div className="flex items-center gap-2">
                     <input
                       type="radio"
                       name="balanceCheckMethod"
-                      value="both"
-                      checked={finBalanceCheckMethod === 'both'}
+                      value="all"
+                      checked={finBalanceCheckMethod === 'all'}
                       onChange={() => {
-                        setFinBalanceCheckMethod('both');
+                        setFinBalanceCheckMethod('all');
                         setFinQrBalanceCheckEnabled(true);
                       }}
                       className="accent-emerald-600 cursor-pointer"
                     />
-                    <span className="font-black text-xs text-emerald-950">Keduanya</span>
+                    <span className="font-black text-xs text-emerald-950">Semua Metode</span>
                   </div>
                   <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
-                    Bisa isi manual NIS atau tombol Scan QR Kamera
+                    Tersedia tab Isi Manual, QR Camera, dan QR Scanner
                   </span>
                 </label>
 
@@ -631,28 +636,49 @@ export default function Settings({
                     <span className="font-black text-xs text-emerald-950">Isi Manual Saja</span>
                   </div>
                   <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
-                    Hanya menampilkan form input Kelas, Nama & NIS
+                    Hanya form pilih Kelas, Nama santri & NIS
                   </span>
                 </label>
 
-                {/* Option 3: QR */}
-                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'qr' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
+                {/* Option 3: QR Camera */}
+                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'camera' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
                   <div className="flex items-center gap-2">
                     <input
                       type="radio"
                       name="balanceCheckMethod"
-                      value="qr"
-                      checked={finBalanceCheckMethod === 'qr'}
+                      value="camera"
+                      checked={finBalanceCheckMethod === 'camera'}
                       onChange={() => {
-                        setFinBalanceCheckMethod('qr');
+                        setFinBalanceCheckMethod('camera');
                         setFinQrBalanceCheckEnabled(true);
                       }}
                       className="accent-emerald-600 cursor-pointer"
                     />
-                    <span className="font-black text-xs text-emerald-950">Scan QR Saja</span>
+                    <span className="font-black text-xs text-emerald-950">QR Camera Saja</span>
                   </div>
                   <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
-                    Langsung menampilkan kamera pemindai QR di beranda
+                    Langsung aktifkan kamera perangkat (HP / Laptop)
+                  </span>
+                </label>
+
+                {/* Option 4: QR Scanner */}
+                <label className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${finBalanceCheckMethod === 'scanner' ? 'bg-white border-emerald-600 shadow-sm' : 'bg-white/60 border-gray-200 hover:border-emerald-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="balanceCheckMethod"
+                      value="scanner"
+                      checked={finBalanceCheckMethod === 'scanner'}
+                      onChange={() => {
+                        setFinBalanceCheckMethod('scanner');
+                        setFinQrBalanceCheckEnabled(true);
+                      }}
+                      className="accent-emerald-600 cursor-pointer"
+                    />
+                    <span className="font-black text-xs text-emerald-950">QR Scanner Saja</span>
+                  </div>
+                  <span className="text-[9.5px] text-gray-500 font-medium mt-1.5 leading-snug">
+                    Alat scanner fisik/tempel (input manual dikunci)
                   </span>
                 </label>
               </div>

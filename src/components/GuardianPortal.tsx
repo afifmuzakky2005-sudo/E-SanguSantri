@@ -4,10 +4,11 @@ import { calculateBalances } from '../data/mockData';
 import { printPassbook, formatTxId } from '../lib/printHelper';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
 import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
-import { LogIn, KeyRound, Phone, CheckCircle2, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, Search, Info, UserPlus, MessageSquare, X, CheckCircle, Shield, BookOpen, Activity, TrendingUp, Sparkles, LogOut, User, Camera, QrCode, AlertCircle, PlusCircle, Upload, Image as ImageIcon, Clock, ChevronRight, Eye } from 'lucide-react';
+import { LogIn, KeyRound, Phone, CheckCircle2, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, Search, Info, UserPlus, MessageSquare, X, CheckCircle, Shield, BookOpen, Activity, TrendingUp, Sparkles, LogOut, User, Camera, QrCode, AlertCircle, PlusCircle, Upload, Image as ImageIcon, Clock, ChevronRight, Eye, ScanLine } from 'lucide-react';
 import { AllocationPieChart } from './VisualCharts';
 import { QrScannerModal } from './QrScannerModal';
 import { InlineQrScanner } from './InlineQrScanner';
+import { PhysicalQrScanner } from './PhysicalQrScanner';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { PWAInstallPrompt } from './PWAInstallBanner';
 
@@ -66,18 +67,26 @@ export default function GuardianPortal({
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
 
   // Method setting for Cek Saldo
-  const effectiveMethod: 'manual' | 'qr' | 'both' = financial?.balanceCheckMethod
-    ? financial.balanceCheckMethod
-    : (financial?.qrBalanceCheckEnabled === false ? 'manual' : 'both');
+  const rawMethod = financial?.balanceCheckMethod;
+  const effectiveMethod: 'all' | 'manual' | 'camera' | 'scanner' = (() => {
+    if (rawMethod === 'camera' || rawMethod === 'qr') return 'camera';
+    if (rawMethod === 'scanner') return 'scanner';
+    if (rawMethod === 'manual') return 'manual';
+    if (financial?.qrBalanceCheckEnabled === false) return 'manual';
+    return 'all'; // Default to all methods (Isi Manual, QR Camera, QR Scanner)
+  })();
 
-  const [activeMethodTab, setActiveMethodTab] = useState<'manual' | 'qr'>(() => {
-    if (effectiveMethod === 'qr') return 'qr';
+  const [activeMethodTab, setActiveMethodTab] = useState<'manual' | 'camera' | 'scanner'>(() => {
+    if (effectiveMethod === 'camera') return 'camera';
+    if (effectiveMethod === 'scanner') return 'scanner';
     return 'manual';
   });
 
   React.useEffect(() => {
-    if (effectiveMethod === 'qr') {
-      setActiveMethodTab('qr');
+    if (effectiveMethod === 'camera') {
+      setActiveMethodTab('camera');
+    } else if (effectiveMethod === 'scanner') {
+      setActiveMethodTab('scanner');
     } else if (effectiveMethod === 'manual') {
       setActiveMethodTab('manual');
     }
@@ -428,32 +437,44 @@ export default function GuardianPortal({
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start max-w-4xl mx-auto">
                 {/* Left Column: Unified Dropdown / NIS Checker / Inline QR Scanner */}
                 <div className="md:col-span-7 bg-white/45 backdrop-blur-xl rounded-[32px] p-8 shadow-2xl border border-white/60 space-y-6">
-                  {/* Tab Switcher if 'both' */}
-                  {effectiveMethod === 'both' && (
-                    <div className="flex bg-emerald-100/70 p-1.5 rounded-2xl border border-emerald-200/60 shadow-inner">
+                  {/* Tab Switcher if 'all' */}
+                  {effectiveMethod === 'all' && (
+                    <div className="flex bg-emerald-100/70 p-1.5 rounded-2xl border border-emerald-200/60 shadow-inner gap-1">
                       <button
                         type="button"
                         onClick={() => setActiveMethodTab('manual')}
-                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-2 ${
+                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
                           activeMethodTab === 'manual'
                             ? 'bg-white text-emerald-950 shadow-md'
                             : 'text-emerald-850 hover:text-emerald-950'
                         }`}
                       >
                         <Search className="w-3.5 h-3.5" />
-                        Isi Manual
+                        <span>Isi Manual</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => setActiveMethodTab('qr')}
-                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-2 ${
-                          activeMethodTab === 'qr'
+                        onClick={() => setActiveMethodTab('camera')}
+                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+                          activeMethodTab === 'camera'
                             ? 'bg-white text-emerald-950 shadow-md'
                             : 'text-emerald-850 hover:text-emerald-950'
                         }`}
                       >
-                        <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-                        Scan QR Kamera
+                        <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>QR Camera</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMethodTab('scanner')}
+                        className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+                          activeMethodTab === 'scanner'
+                            ? 'bg-white text-emerald-950 shadow-md'
+                            : 'text-emerald-850 hover:text-emerald-950'
+                        }`}
+                      >
+                        <ScanLine className="w-3.5 h-3.5 text-teal-600" />
+                        <span>QR Scanner</span>
                       </button>
                     </div>
                   )}
@@ -461,30 +482,47 @@ export default function GuardianPortal({
                   {/* Header */}
                   <div className="flex items-center gap-3 pb-4 border-b border-emerald-950/10">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-900 flex items-center justify-center font-bold shadow-md">
-                      {activeMethodTab === 'qr' || effectiveMethod === 'qr' ? (
+                      {activeMethodTab === 'camera' ? (
                         <Camera className="w-5 h-5 text-emerald-900" />
+                      ) : activeMethodTab === 'scanner' ? (
+                        <ScanLine className="w-5 h-5 text-emerald-900" />
                       ) : (
                         <Search className="w-5 h-5 text-emerald-900" />
                       )}
                     </div>
                     <div>
                       <h3 className="font-extrabold text-emerald-950 text-sm uppercase tracking-wide">
-                        {activeMethodTab === 'qr' || effectiveMethod === 'qr' ? 'Pindai QR Cek Saldo' : 'Cek Keuangan Santri'}
+                        {activeMethodTab === 'camera'
+                          ? 'Pindai QR Camera'
+                          : activeMethodTab === 'scanner'
+                          ? 'Pindai QR Scanner'
+                          : 'Cek Keuangan Santri'}
                       </h3>
                       <p className="text-[10px] text-emerald-900/60 font-bold">
-                        {activeMethodTab === 'qr' || effectiveMethod === 'qr'
+                        {activeMethodTab === 'camera'
                           ? 'Arahkan kamera ke QR Code / Kartu Tabungan Santri'
+                          : activeMethodTab === 'scanner'
+                          ? 'Tempelkan kartu santri pada alat QR Scanner fisik/tempel'
                           : 'Verifikasi data santri secara akurat'}
                       </p>
                     </div>
                   </div>
 
                   {/* Content Area */}
-                  {activeMethodTab === 'qr' || effectiveMethod === 'qr' ? (
+                  {activeMethodTab === 'camera' ? (
                     <div className="space-y-4">
                       <InlineQrScanner onScanSuccess={handleQrScanSuccess} />
                       <p className="text-[10px] text-emerald-900/70 font-semibold text-center italic">
                         Arahkan kamera perangkat Anda ke kartu tabungan atau dokumen QR santri untuk mengecek saldo secara otomatis.
+                      </p>
+                    </div>
+                  ) : activeMethodTab === 'scanner' ? (
+                    <div className="space-y-4">
+                      <PhysicalQrScanner
+                        onScanSuccess={handleQrScanSuccess}
+                      />
+                      <p className="text-[10px] text-emerald-900/70 font-semibold text-center italic">
+                        Sensor otomatis mendeteksi kartu santri pada alat scanner fisik. Pengetikan manual dikunci demi akurasi.
                       </p>
                     </div>
                   ) : (

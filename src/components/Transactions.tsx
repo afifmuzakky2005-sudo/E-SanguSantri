@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Santri, Transaction, FinancialSettings, AccountType, InstitutionSettings } from '../types';
 import { calculateBalances } from '../data/mockData';
-import { Search, CircleDollarSign, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, ShieldAlert, CheckCircle, FileText, X, ChevronRight, History, Receipt, ArrowRight, MessageSquare, Camera } from 'lucide-react';
+import { Search, CircleDollarSign, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, ShieldAlert, CheckCircle, FileText, X, ChevronRight, History, Receipt, ArrowRight, MessageSquare, Camera, ScanLine } from 'lucide-react';
 import { printReceipt, parseWaTransactionTemplate, getWhatsAppLink, formatTxId } from '../lib/printHelper';
 import { formatDateDDMMYYYY } from '../lib/dateUtils';
 import { playSetorSound, playTarikSound, playSuccessSound, playErrorSound } from '../lib/soundHelper';
 import { motion, AnimatePresence } from 'motion/react';
 import { QrScannerModal } from './QrScannerModal';
+import { PhysicalQrScanner } from './PhysicalQrScanner';
 
 interface TransactionsProps {
   students: Santri[];
@@ -47,6 +48,7 @@ export default function Transactions({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Santri | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isPhysicalScannerOpen, setIsPhysicalScannerOpen] = useState(false);
 
   // Success modal state for transaction completion
   const [successModalData, setSuccessModalData] = useState<{
@@ -601,15 +603,25 @@ export default function Transactions({
                 />
               </div>
 
-              {/* QR Code Scanner Trigger Button */}
-              <button
-                type="button"
-                onClick={() => setIsCameraOpen(true)}
-                className="w-full py-3 bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900 border border-emerald-200 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm hover:shadow active:scale-98"
-              >
-                <Camera className="w-4 h-4 text-emerald-600" />
-                Buka Kamera untuk Scan QR
-              </button>
+              {/* QR Scanner and QR Camera Trigger Buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCameraOpen(true)}
+                  className="py-3 px-2 bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900 border border-emerald-200 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs hover:shadow active:scale-98"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                  QR Camera
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPhysicalScannerOpen(true)}
+                  className="py-3 px-2 bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs hover:shadow active:scale-98"
+                >
+                  <ScanLine className="w-3.5 h-3.5 text-emerald-400" />
+                  QR Scanner
+                </button>
+              </div>
 
               {/* Dropdown results */}
               {searchQuery && !selectedStudent && (
@@ -1544,6 +1556,35 @@ export default function Transactions({
           onClose={() => setIsCameraOpen(false)}
           onScanSuccess={handleScanSuccess}
         />
+      )}
+
+      {/* Physical QR Scanner Modal */}
+      {isPhysicalScannerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-slate-900 rounded-3xl overflow-hidden border border-slate-700 shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <ScanLine className="w-4 h-4 text-emerald-400" />
+                <h4 className="text-xs font-black text-white uppercase tracking-wider">Mode QR Scanner Fisik</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhysicalScannerOpen(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <PhysicalQrScanner
+                onScanSuccess={(code) => {
+                  handleScanSuccess(code);
+                  setIsPhysicalScannerOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

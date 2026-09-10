@@ -7,6 +7,7 @@ import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { QrScannerModal } from './QrScannerModal';
+import { PhysicalQrScanner } from './PhysicalQrScanner';
 import { 
   QrCode, 
   Sparkles, 
@@ -17,7 +18,8 @@ import {
   ChevronRight, 
   Camera,
   Search,
-  X
+  X,
+  ScanLine
 } from 'lucide-react';
 
 interface QrGeneratifViewProps {
@@ -44,6 +46,7 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
   } | null>(null);
   const [isScanningSim, setIsScanningSim] = useState(false);
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const [isPhysicalScannerOpen, setIsPhysicalScannerOpen] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
@@ -609,14 +612,24 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCameraScannerOpen(true)}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border-none flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10"
-                >
-                  <Camera className="w-4 h-4" />
-                  Buka Scanner Kamera
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCameraScannerOpen(true)}
+                    className="py-2.5 px-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border-none flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/10"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    QR Camera
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPhysicalScannerOpen(true)}
+                    className="py-2.5 px-2 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-emerald-300 font-black text-[10px] uppercase tracking-widest rounded-xl transition cursor-pointer border border-slate-700 flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    <ScanLine className="w-3.5 h-3.5 text-emerald-400" />
+                    QR Scanner
+                  </button>
+                </div>
 
                 <div className="flex gap-2">
                   <button
@@ -798,6 +811,35 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
         onClose={() => setIsCameraScannerOpen(false)}
         onScanSuccess={handleCameraScanSuccess}
       />
+
+      {/* Physical scanner modal wrapper */}
+      {isPhysicalScannerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-slate-900 rounded-3xl overflow-hidden border border-slate-700 shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <ScanLine className="w-4 h-4 text-emerald-400" />
+                <h4 className="text-xs font-black text-white uppercase tracking-wider">Mode QR Scanner Fisik</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhysicalScannerOpen(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <PhysicalQrScanner
+                onScanSuccess={(code) => {
+                  handleCameraScanSuccess(code);
+                  setIsPhysicalScannerOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
