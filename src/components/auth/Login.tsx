@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Eye, EyeOff, X, ArrowRight, KeyRound } from 'lucide-react';
-import { User } from '../types';
+import { User } from '../../types';
 
 interface LoginProps {
   isOpen: boolean;

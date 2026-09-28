@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PendingRegistration } from '../types';
+import { PendingRegistration } from '../../types';
 import { 
   CheckCircle, 
   Clock, 
@@ -21,7 +21,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../../lib/dateUtils';
 
 interface RegistrationManagementProps {
   registrations: PendingRegistration[];

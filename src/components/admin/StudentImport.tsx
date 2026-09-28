@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Santri, InstitutionSettings } from '../types';
+import { Santri, InstitutionSettings } from '../../types';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { FileDown, Upload, AlertTriangle, CheckCircle2, X, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';

@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Santri, Transaction, FinancialSettings, AccountType, InstitutionSettings } from '../types';
-import { calculateBalances } from '../data/mockData';
+import { Santri, Transaction, FinancialSettings, AccountType, InstitutionSettings } from '../../types';
+import { calculateBalances } from '../../data/mockData';
 import { Search, CircleDollarSign, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, ShieldAlert, CheckCircle, FileText, X, ChevronRight, History, Receipt, ArrowRight, MessageSquare, Camera, ScanLine } from 'lucide-react';
-import { printReceipt, parseWaTransactionTemplate, getWhatsAppLink, formatTxId } from '../lib/printHelper';
-import { formatDateDDMMYYYY } from '../lib/dateUtils';
-import { playSetorSound, playTarikSound, playSuccessSound, playErrorSound } from '../lib/soundHelper';
+import { printReceipt, parseWaTransactionTemplate, getWhatsAppLink, formatTxId } from '../../lib/printHelper';
+import { formatDateDDMMYYYY } from '../../lib/dateUtils';
+import { playSetorSound, playTarikSound, playSuccessSound, playErrorSound } from '../../lib/soundHelper';
 import { motion, AnimatePresence } from 'motion/react';
-import { QrScannerModal } from './QrScannerModal';
-import { PhysicalQrScanner } from './PhysicalQrScanner';
+import { QrScannerModal } from '../qr/QrScannerModal';
+import { PhysicalQrScanner } from '../qr/PhysicalQrScanner';
 
 interface TransactionsProps {
   students: Santri[];
@@ -19,7 +19,7 @@ interface TransactionsProps {
   initialView?: 'setor' | 'tarik';
   prefilled?: {
     santriId: string;
-    accountType: 'Tabungan' | 'Penitipan';
+    accountType: 'Tabungan';
     amount: number;
     type: 'Setor' | 'Tarik';
     paymentMethod: 'Tunai' | 'Transfer';
@@ -58,12 +58,12 @@ export default function Transactions({
   } | null>(null);
 
   // Setor Form State
-  const [setorAccount, setSetorAccount] = useState<AccountType>('Penitipan');
+  const [setorAccount] = useState<AccountType>('Tabungan');
   const [setorAmount, setSetorAmount] = useState<number>(0);
   const [setorNote, setSetorNote] = useState('-');
 
   // Tarik Form State
-  const [tarikAccount, setTarikAccount] = useState<AccountType>('Penitipan');
+  const [tarikAccount] = useState<AccountType>('Tabungan');
   const [tarikAmount, setTarikAmount] = useState<number>(0);
   const [tarikNote, setTarikNote] = useState('-');
   const [withdrawerName, setWithdrawerName] = useState('');
@@ -143,13 +143,11 @@ export default function Transactions({
         setActiveTab(((prefilled.type || 'setor').toLowerCase()) as 'setor' | 'tarik');
         
         if (prefilled.type === 'Setor') {
-          setSetorAccount(prefilled.accountType);
           setSetorAmount(prefilled.amount);
           setSetorPaymentMethod(prefilled.paymentMethod);
           setSetorReceipt(prefilled.transferReceiptUrl);
           setSetorNote(`Setoran Mandiri via Portal (ID Pengajuan: ${prefilled.registrationId.slice(-6)})`);
         } else {
-          setTarikAccount(prefilled.accountType);
           setTarikAmount(prefilled.amount);
           setTarikPaymentMethod(prefilled.paymentMethod);
           setTarikReceipt(prefilled.transferReceiptUrl);
@@ -197,7 +195,7 @@ export default function Transactions({
     }
   };
 
-  const selectedStudentBalances = selectedStudent ? calculateBalances(selectedStudent.id, transactions) : { tabungan: 0, penitipan: 0, total: 0 };
+  const selectedStudentBalances = selectedStudent ? calculateBalances(selectedStudent.id, transactions) : { tabungan: 0, total: 0 };
 
   // Counting student's tabungan withdrawals this year to check limits
   const getTabunganWithdrawalCountThisYear = (studentId: string) => {
@@ -213,18 +211,15 @@ export default function Transactions({
   const withdrawalCount = selectedStudent ? getTabunganWithdrawalCountThisYear(selectedStudent.id) : 0;
 
   // Auto calculate admin fee based on financial settings
-  const getCalculatedAdminFee = (type: 'Setor' | 'Tarik', account: AccountType) => {
+  const getCalculatedAdminFee = (type: 'Setor' | 'Tarik', account: AccountType = 'Tabungan') => {
     if (type === 'Setor') return 0;
-    if (account === 'Tabungan' && financialSettings.adminFeeTabunganEnabled) {
+    if (financialSettings.adminFeeTabunganEnabled) {
       return financialSettings.adminFeeTabunganAmount;
-    }
-    if (account === 'Penitipan' && financialSettings.adminFeePenitipanEnabled) {
-      return financialSettings.adminFeePenitipanAmount;
     }
     return 0;
   };
 
-  const calculatedFee = getCalculatedAdminFee('Tarik', tarikAccount);
+  const calculatedFee = getCalculatedAdminFee('Tarik', 'Tabungan');
 
   const handleSetorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,111 +236,42 @@ export default function Transactions({
       return;
     }
 
-    const limitAmt = financialSettings.maxDepositAmount || 500000;
+    const txData = {
+      santriId: selectedStudent.id,
+      santriName: selectedStudent.name,
+      santriClass: selectedStudent.className,
+      date: transactionDateTime.split('T')[0],
+      type: 'Setor' as const,
+      accountType: 'Tabungan' as const,
+      amount: setorAmount,
+      adminFee: 0,
+      netAmount: setorAmount,
+      note: (setorNote.trim() && setorNote.trim() !== '-') ? setorNote.trim() : 'Setoran Tabungan',
+      cashierName: cashierName,
+      signatureName: '',
+      timestamp: new Date(transactionDateTime).toISOString(),
+      paymentMethod: setorPaymentMethod,
+      bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
+      accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
+      transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
+    };
 
-    if (setorAccount === 'Penitipan' && setorAmount > limitAmt) {
-      const firstAmount = limitAmt;
-      const secondAmount = setorAmount - limitAmt;
+    const completedTx = onAddTransaction(txData);
 
-      const txData1 = {
-        santriId: selectedStudent.id,
-        santriName: selectedStudent.name,
-        santriClass: selectedStudent.className,
-        date: transactionDateTime.split('T')[0],
-        type: 'Setor' as const,
-        accountType: 'Penitipan' as const,
-        amount: firstAmount,
-        adminFee: 0,
-        netAmount: firstAmount,
-        note: (setorNote.trim() && setorNote.trim() !== '-') ? `${setorNote.trim()} (Maksimal nominal penitipan)` : 'Setoran Penitipan (Maksimal nominal)',
-        cashierName: cashierName,
-        signatureName: '',
-        timestamp: new Date(transactionDateTime).toISOString(),
-        paymentMethod: setorPaymentMethod,
-        bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
-        accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
-        transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
-      };
-
-      const dateObj = new Date(transactionDateTime);
-      dateObj.setSeconds(dateObj.getSeconds() + 1);
-
-      const txData2 = {
-        santriId: selectedStudent.id,
-        santriName: selectedStudent.name,
-        santriClass: selectedStudent.className,
-        date: transactionDateTime.split('T')[0],
-        type: 'Setor' as const,
-        accountType: 'Tabungan' as const,
-        amount: secondAmount,
-        adminFee: 0,
-        netAmount: secondAmount,
-        note: `sisa uang penitipan melebihi batas Rp ${limitAmt.toLocaleString('id-ID')}`,
-        cashierName: cashierName,
-        signatureName: '',
-        timestamp: dateObj.toISOString(),
-        paymentMethod: setorPaymentMethod,
-        bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
-        accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
-        transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
-      };
-
-      const completedTx1 = onAddTransaction(txData1);
-      const completedTx2 = onAddTransaction(txData2);
-
-      if (prefilled && prefilled.registrationId) {
-        if (onConfirmDeposit) {
-          onConfirmDeposit(prefilled.registrationId);
-        }
-        if (onClearPrefilled) {
-          onClearPrefilled();
-        }
+    if (prefilled && prefilled.registrationId) {
+      if (onConfirmDeposit) {
+        onConfirmDeposit(prefilled.registrationId);
       }
-
-      playSetorSound();
-      setSuccessModalData({
-        tx: completedTx1,
-        student: selectedStudent,
-        splitTx: completedTx2
-      });
-    } else {
-      const txData = {
-        santriId: selectedStudent.id,
-        santriName: selectedStudent.name,
-        santriClass: selectedStudent.className,
-        date: transactionDateTime.split('T')[0],
-        type: 'Setor' as const,
-        accountType: setorAccount,
-        amount: setorAmount,
-        adminFee: 0,
-        netAmount: setorAmount,
-        note: setorNote.trim() || '-',
-        cashierName: cashierName,
-        signatureName: '',
-        timestamp: new Date(transactionDateTime).toISOString(),
-        paymentMethod: setorPaymentMethod,
-        bankName: setorPaymentMethod === 'Transfer' ? setorBankName : undefined,
-        accountInfo: setorPaymentMethod === 'Transfer' ? setorAccountInfo : undefined,
-        transferReceiptUrl: setorPaymentMethod === 'Transfer' ? setorReceipt : undefined
-      };
-
-      const completedTx = onAddTransaction(txData);
-
-      if (prefilled && prefilled.registrationId) {
-        if (onConfirmDeposit) {
-          onConfirmDeposit(prefilled.registrationId);
-        }
-        if (onClearPrefilled) {
-          onClearPrefilled();
-        }
+      if (onClearPrefilled) {
+        onClearPrefilled();
       }
-
-      playSetorSound();
-      setSuccessModalData({
-        tx: completedTx,
-        student: selectedStudent
-      });
     }
+
+    playSetorSound();
+    setSuccessModalData({
+      tx: completedTx,
+      student: selectedStudent
+    });
 
     // Reset Form
     setSetorAmount(0);
@@ -380,7 +306,7 @@ export default function Transactions({
     };
     const finalFee = getWithdrawalAdminFee();
 
-    const maxAvailable = tarikAccount === 'Tabungan' ? selectedStudentBalances.tabungan : selectedStudentBalances.penitipan;
+    const maxAvailable = selectedStudentBalances.tabungan;
     const totalRequired = tarikAmount;
 
     if (totalRequired > maxAvailable) {
@@ -678,16 +604,8 @@ export default function Transactions({
 
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Tabungan</span>
-                      <span className="font-black text-xs text-white">{formatCurrency(selectedStudentBalances.tabungan)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Penitipan</span>
-                      <span className="font-black text-xs text-white">{formatCurrency(selectedStudentBalances.penitipan)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Total Saldo</span>
-                      <span className="font-black text-sm text-amber-400">{formatCurrency(selectedStudentBalances.total)}</span>
+                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Saldo Tabungan</span>
+                      <span className="font-black text-sm text-white">{formatCurrency(selectedStudentBalances.tabungan)}</span>
                     </div>
                   </div>
                 </div>
@@ -702,50 +620,20 @@ export default function Transactions({
                     <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center font-black text-white">2</div>
                     <h3 className="font-black text-emerald-950 text-xs uppercase tracking-widest flex items-center gap-2">
                       <FileText className="w-4 h-4 text-emerald-600" />
-                      Detail Setoran Dana
+                      Detail Setoran Tabungan
                     </h3>
                   </div>
 
-                  {/* Row 1: Tanggal & Waktu & Akun Tujuan (2 kolom) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-emerald-950 uppercase tracking-widest ml-1">TANGGAL & WAKTU</label>
-                      <input
-                        type="datetime-local"
-                        required
-                        value={transactionDateTime}
-                        onChange={(e) => setTransactionDateTime(e.target.value)}
-                        className="w-full px-4 py-3 text-xs font-bold border border-gray-100 bg-white rounded-xl focus:outline-none focus:border-emerald-600 transition"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-emerald-950 uppercase tracking-widest ml-1">AKUN TUJUAN*</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { setSetorAccount('Penitipan'); setSetorNote('-'); }}
-                          className={`py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition cursor-pointer ${
-                            setorAccount === 'Penitipan'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-500 font-extrabold'
-                              : 'bg-white text-gray-400 border-gray-100 hover:border-emerald-200 font-bold'
-                          }`}
-                        >
-                          Penitipan
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setSetorAccount('Tabungan'); setSetorNote('-'); }}
-                          className={`py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition cursor-pointer ${
-                            setorAccount === 'Tabungan'
-                              ? 'bg-teal-50 text-teal-800 border-teal-500 font-extrabold'
-                              : 'bg-white text-gray-400 border-gray-100 hover:border-teal-200 font-bold'
-                          }`}
-                        >
-                          Tabungan
-                        </button>
-                      </div>
-                    </div>
+                  {/* Row 1: Tanggal & Waktu */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-emerald-950 uppercase tracking-widest ml-1">TANGGAL & WAKTU</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={transactionDateTime}
+                      onChange={(e) => setTransactionDateTime(e.target.value)}
+                      className="w-full px-4 py-3 text-xs font-bold border border-gray-100 bg-white rounded-xl focus:outline-none focus:border-emerald-600 transition"
+                    />
                   </div>
 
                   {/* Row 2: Nominal Setoran (Long Column / Full Width) */}
@@ -891,49 +779,20 @@ export default function Transactions({
                     <div className="w-8 h-8 rounded-xl bg-red-600 flex items-center justify-center font-black text-white">2</div>
                     <h3 className="font-black text-emerald-950 text-xs uppercase tracking-widest flex items-center gap-2">
                       <FileText className="w-4 h-4 text-red-600" />
-                      Detail Penarikan Dana
+                      Detail Penarikan Tabungan
                     </h3>
                   </div>
 
-                  {/* Row 1: Tanggal & Waktu & Sumber Dana (2 kolom) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-emerald-950 uppercase tracking-widest ml-1">TANGGAL & WAKTU</label>
-                      <input
-                        type="datetime-local"
-                        required
-                        value={transactionDateTime}
-                        onChange={(e) => setTransactionDateTime(e.target.value)}
-                        className="w-full px-4 py-3 text-xs font-bold border border-gray-100 bg-white rounded-xl focus:outline-none focus:border-emerald-600 transition"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-emerald-950 uppercase tracking-widest ml-1">SUMBER DANA*</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { setTarikAccount('Penitipan'); setTarikNote('-'); }}
-                          className={`py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition cursor-pointer ${
-                            tarikAccount === 'Penitipan'
-                              ? 'bg-red-50 text-red-800 border-red-500 font-extrabold'
-                              : 'bg-white text-gray-400 border-gray-100 hover:border-red-200 font-bold'
-                          }`}
-                        >
-                          Penitipan
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setTarikAccount('Tabungan'); setTarikNote('-'); }}
-                          className={`py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition cursor-pointer ${
-                            tarikAccount === 'Tabungan'
-                              ? 'bg-orange-50 text-orange-800 border-orange-500 font-extrabold'
-                              : 'bg-white text-gray-400 border-gray-100 hover:border-orange-200 font-bold'
-                          }`}
-                        >
-                          Tabungan
-                        </button>
-                      </div>
-                    </div>
+                  {/* Row 1: Tanggal & Waktu */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-emerald-950 uppercase tracking-widest ml-1">TANGGAL & WAKTU</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={transactionDateTime}
+                      onChange={(e) => setTransactionDateTime(e.target.value)}
+                      className="w-full px-4 py-3 text-xs font-bold border border-gray-100 bg-white rounded-xl focus:outline-none focus:border-emerald-600 transition"
+                    />
                   </div>
 
                   {/* Row 2: Nominal Tarik (Long Column / Full Width) */}
@@ -959,12 +818,11 @@ export default function Transactions({
                             alert('Silakan pilih santri terlebih dahulu.');
                             return;
                           }
-                          const maxAvailable = tarikAccount === 'Tabungan' ? selectedStudentBalances.tabungan : selectedStudentBalances.penitipan;
-                          setTarikAmount(maxAvailable);
+                          setTarikAmount(selectedStudentBalances.tabungan);
                         }}
                         className="px-4 py-2 text-[10px] font-black bg-amber-50 text-amber-700 rounded-xl hover:bg-amber-100 transition border border-amber-200 cursor-pointer"
                       >
-                        Semua Saldo ({formatCurrency(tarikAccount === 'Tabungan' ? selectedStudentBalances.tabungan : selectedStudentBalances.penitipan)})
+                        Semua Saldo ({formatCurrency(selectedStudentBalances.tabungan)})
                       </button>
                       {[50000, 100000, 200000, 500000, 1000000].map(amt => (
                         <button
@@ -1389,18 +1247,12 @@ export default function Transactions({
                   className="text-xs text-gray-500 font-bold px-2"
                 >
                   {successModalData.splitTx ? (
-                    successModalData.tx.type === 'Setor' ? (
-                      <>
-                        Setoran utama <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> (Penitipan) & kelebihan <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis disalurkan ke <span className="text-gray-900 font-extrabold">Tabungan</span> (sisa uang penitipan melebihi batas).
-                      </>
-                    ) : (
-                      <>
-                        Penarikan sebesar <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount + successModalData.splitTx.amount)}</span> sukses diproses: <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> diterima santri & <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> otomatis terpotong untuk biaya admin.
-                      </>
-                    )
+                    <>
+                      Penarikan sebesar <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount + successModalData.splitTx.amount)}</span> sukses diproses: <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> diterima santri & <span className="text-emerald-700">{formatCurrency(successModalData.splitTx.amount)}</span> dipotong untuk biaya admin.
+                    </>
                   ) : (
                     <>
-                      {successModalData.tx.type === 'Setor' ? 'Setoran' : 'Penarikan'} sejumlah <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> untuk santri <span className="text-gray-900 font-extrabold">{successModalData.student.name}</span> telah sukses diproses.
+                      {successModalData.tx.type === 'Setor' ? 'Setoran' : 'Penarikan'} tabungan sejumlah <span className="text-emerald-700">{formatCurrency(successModalData.tx.amount)}</span> untuk santri <span className="text-gray-900 font-extrabold">{successModalData.student.name}</span> telah sukses diproses.
                     </>
                   )}
                 </motion.p>
@@ -1432,7 +1284,6 @@ export default function Transactions({
                   <span className="text-gray-400 font-bold">Jenis Akun</span>
                   <span className="text-gray-800 font-extrabold">
                     {successModalData.tx.accountType}
-                    {successModalData.splitTx && successModalData.tx.type === 'Setor' && ' + Tabungan'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -1489,11 +1340,6 @@ export default function Transactions({
                   type="button"
                   onClick={() => {
                     printReceipt(successModalData.tx, successModalData.student, institution, transactions);
-                    if (successModalData.splitTx && successModalData.tx.type === 'Setor') {
-                      setTimeout(() => {
-                        printReceipt(successModalData.splitTx!, successModalData.student, institution, transactions);
-                      }, 800);
-                    }
                   }}
                   className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition flex items-center justify-center gap-2 border-none cursor-pointer"
                 >
@@ -1511,21 +1357,13 @@ export default function Transactions({
                       return;
                     }
                     const templateText = institution.waTemplateTransaction || '';
-                    let parsedMsg = parseWaTransactionTemplate(
+                    const parsedMsg = parseWaTransactionTemplate(
                       templateText,
                       successModalData.tx,
                       successModalData.student,
                       institution,
                       transactions
                     );
-                    if (successModalData.splitTx && successModalData.tx.type === 'Setor') {
-                      const splitId = formatTxId(successModalData.splitTx.id, transactions);
-                      parsedMsg += `\n\n*Mutasi Otomatis Tabungan (Sisa Uang Penitipan)*:\n` +
-                        `• ID Transaksi: ${splitId}\n` +
-                        `• Akun: Tabungan\n` +
-                        `• Nominal: Rp ${successModalData.splitTx.amount.toLocaleString('id-ID')}\n` +
-                        `• Keterangan: ${successModalData.splitTx.note || 'sisa uang penitipan'}`;
-                    }
                     const waUrl = getWhatsAppLink(successModalData.student.guardianPhone, parsedMsg);
                     window.open(waUrl, '_blank');
                   }}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { InstitutionSettings, FinancialSettings, User } from '../types';
+import { InstitutionSettings, FinancialSettings, User } from '../../types';
 import { Save, CheckCircle, Shield, Settings2, HelpCircle, UserPlus, Trash2, BookOpen, Plus, Home, MessageSquare, RefreshCw, AlertTriangle, QrCode, Sparkles } from 'lucide-react';
-import { processLogoImage, updateAppFavicon } from '../lib/faviconHelper';
+import { processLogoImage, updateAppFavicon } from '../../lib/faviconHelper';
 
 interface SettingsProps {
   institution: InstitutionSettings;
@@ -43,10 +43,7 @@ export default function Settings({
   const [finWindowEnd, setFinWindowEnd] = useState(financial.windowEndDate);
   const [finFeeTabEnabled, setFinFeeTabEnabled] = useState(financial.adminFeeTabunganEnabled);
   const [finFeeTabAmt, setFinFeeTabAmt] = useState(financial.adminFeeTabunganAmount);
-  const [finFeePenEnabled, setFinFeePenEnabled] = useState(financial.adminFeePenitipanEnabled);
-  const [finFeePenAmt, setFinFeePenAmt] = useState(financial.adminFeePenitipanAmount);
   const [finSavingsBookFee, setFinSavingsBookFee] = useState(financial.savingsBookFeeAmount || 5000);
-  const [finMaxDepositAmt, setFinMaxDepositAmt] = useState(financial.maxDepositAmount || 500000);
   const [finQrBalanceCheckEnabled, setFinQrBalanceCheckEnabled] = useState(financial.qrBalanceCheckEnabled ?? true);
   const [finBalanceCheckMethod, setFinBalanceCheckMethod] = useState<'all' | 'manual' | 'camera' | 'scanner'>(() => {
     const raw = financial.balanceCheckMethod;
@@ -216,10 +213,7 @@ export default function Settings({
       windowEndDate: finWindowEnd,
       adminFeeTabunganEnabled: finFeeTabEnabled,
       adminFeeTabunganAmount: finFeeTabAmt,
-      adminFeePenitipanEnabled: finFeePenEnabled,
-      adminFeePenitipanAmount: finFeePenAmt,
       savingsBookFeeAmount: finSavingsBookFee,
-      maxDepositAmount: finMaxDepositAmt,
       qrBalanceCheckEnabled: finBalanceCheckMethod !== 'manual',
       balanceCheckMethod: finBalanceCheckMethod,
       allowDeleteWithBalance: finAllowDeleteWithBalance
@@ -450,30 +444,16 @@ export default function Settings({
             {/* General Fees */}
             <div className="bg-blue-50/50 border border-blue-100/70 p-3.5 rounded-lg space-y-3 mb-4">
               <span className="font-bold text-blue-950 block text-[11px] uppercase tracking-wider">Aturan Umum</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="block text-gray-500 font-black mb-1 uppercase tracking-widest text-[10px]">Biaya Buku Tabungan (Awal)</label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1.5 text-gray-400 font-bold">Rp</span>
-                    <input
-                      type="number"
-                      value={finSavingsBookFee}
-                      onChange={(e) => setFinSavingsBookFee(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full pl-8 pr-2 py-1.5 border border-gray-200 rounded font-semibold focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-gray-500 font-black mb-1 uppercase tracking-widest text-[10px]">Nominal Maksimal Penitipan</label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1.5 text-gray-400 font-bold">Rp</span>
-                    <input
-                      type="number"
-                      value={finMaxDepositAmt}
-                      onChange={(e) => setFinMaxDepositAmt(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full pl-8 pr-2 py-1.5 border border-gray-200 rounded font-semibold focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
+              <div className="space-y-2 max-w-sm">
+                <label className="block text-gray-500 font-black mb-1 uppercase tracking-widest text-[10px]">Biaya Buku Tabungan (Awal)</label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1.5 text-gray-400 font-bold">Rp</span>
+                  <input
+                    type="number"
+                    value={finSavingsBookFee}
+                    onChange={(e) => setFinSavingsBookFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full pl-8 pr-2 py-1.5 border border-gray-200 rounded font-semibold focus:outline-none focus:border-emerald-600"
+                  />
                 </div>
               </div>
             </div>
@@ -532,56 +512,29 @@ export default function Settings({
             <div className="bg-gray-50 border border-gray-200 p-3.5 rounded-lg space-y-3">
               <span className="font-bold text-gray-800 block text-[11px] uppercase tracking-wider">Skema Biaya Admin Opsional</span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="fee_tab_en"
-                      checked={finFeeTabEnabled}
-                      onChange={(e) => setFinFeeTabEnabled(e.target.checked)}
-                      className="rounded text-emerald-600"
-                    />
-                    <label htmlFor="fee_tab_en" className="font-black text-gray-700 cursor-pointer uppercase tracking-widest text-[10px]">Admin Tarik Tabungan</label>
-                  </div>
-                  {finFeeTabEnabled && (
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1.5 text-gray-400 font-bold">Rp</span>
-                      <input
-                        type="number"
-                        placeholder="2000"
-                        value={finFeeTabAmt || ''}
-                        onChange={(e) => setFinFeeTabAmt(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full pl-8 pr-2 py-1 border border-gray-200 rounded font-semibold focus:outline-none focus:border-emerald-600"
-                      />
-                    </div>
-                  )}
+              <div className="space-y-2 max-w-sm">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="fee_tab_en"
+                    checked={finFeeTabEnabled}
+                    onChange={(e) => setFinFeeTabEnabled(e.target.checked)}
+                    className="rounded text-emerald-600"
+                  />
+                  <label htmlFor="fee_tab_en" className="font-black text-gray-700 cursor-pointer uppercase tracking-widest text-[10px]">Admin Tarik Tabungan</label>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                {finFeeTabEnabled && (
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1.5 text-gray-400 font-bold">Rp</span>
                     <input
-                      type="checkbox"
-                      id="fee_pen_en"
-                      checked={finFeePenEnabled}
-                      onChange={(e) => setFinFeePenEnabled(e.target.checked)}
-                      className="rounded text-emerald-600"
+                      type="number"
+                      placeholder="2000"
+                      value={finFeeTabAmt || ''}
+                      onChange={(e) => setFinFeeTabAmt(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full pl-8 pr-2 py-1 border border-gray-200 rounded font-semibold focus:outline-none focus:border-emerald-600"
                     />
-                    <label htmlFor="fee_pen_en" className="font-black text-gray-700 cursor-pointer uppercase tracking-widest text-[10px]">Admin Tarik Penitipan</label>
                   </div>
-                  {finFeePenEnabled && (
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1.5 text-gray-400 font-bold">Rp</span>
-                      <input
-                        type="number"
-                        placeholder="1000"
-                        value={finFeePenAmt || ''}
-                        onChange={(e) => setFinFeePenAmt(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full pl-8 pr-2 py-1 border border-gray-200 rounded font-semibold focus:outline-none focus:border-emerald-600"
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
@@ -897,7 +850,6 @@ export default function Settings({
             <code className="text-emerald-700 font-bold font-mono">{"{KELAS}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{ASRAMA}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{Saldo Tabungan}"}</code>, 
-            <code className="text-emerald-700 font-bold font-mono">{"{Saldo Penitipan}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{TOTAL SALDO}"}</code>
           </p>
           <textarea

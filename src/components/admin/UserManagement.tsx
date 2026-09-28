@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User } from '../types';
+import { User } from '../../types';
 import { Shield, UserPlus, Trash2, Edit2, CheckCircle2, X, Eye, EyeOff, Key } from 'lucide-react';
 
 interface UserManagementProps {
@@ -25,7 +25,7 @@ export default function UserManagement({
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'Master' | 'Bendahara' | 'Admin'>('Admin');
+  const [role, setRole] = useState<any>('Admin');
   const [isActive, setIsActive] = useState<boolean>(true);
 
   const [saveSuccess, setSaveSuccess] = useState('');

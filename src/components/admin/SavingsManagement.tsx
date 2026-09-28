@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
-import { Santri, Transaction, InstitutionSettings, FinancialSettings, PendingRegistration } from '../types';
-import { calculateBalances } from '../data/mockData';
+import { Santri, Transaction, InstitutionSettings, FinancialSettings, PendingRegistration } from '../../types';
+import { calculateBalances } from '../../data/mockData';
 import { Search, MessageCircle, FileDown, Trash2, Printer, X, Filter, BookOpen, AlertCircle, Sparkles, UserPlus, ChevronRight, UserCheck, Edit2, Power, Plus, QrCode, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { printPassbook, formatTxId } from '../lib/printHelper';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
+import { printPassbook, formatTxId } from '../../lib/printHelper';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../../lib/dateUtils';
 
 interface SavingsManagementProps {
   students: Santri[];
@@ -24,6 +24,7 @@ interface SavingsManagementProps {
   onDeleteRegistration?: (regId: string) => void;
   currentUserRole?: string;
   onDeleteTransaction?: (txId: string) => void;
+  onUpdateTransaction?: (tx: Transaction) => void;
 }
 
 export default function SavingsManagement({
@@ -40,7 +41,8 @@ export default function SavingsManagement({
   registrations = [],
   onDeleteRegistration,
   currentUserRole,
-  onDeleteTransaction
+  onDeleteTransaction,
+  onUpdateTransaction
 }: SavingsManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState('Semua');
@@ -53,12 +55,23 @@ export default function SavingsManagement({
   
   // Print popup states
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [printTab, setPrintTab] = useState<'Tabungan' | 'Penitipan' | 'Pengajuan'>('Tabungan');
   
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteConfirmWithBalanceId, setDeleteConfirmWithBalanceId] = useState<string | null>(null);
   const [isBulkDeleteConfirm, setIsBulkDeleteConfirm] = useState(false);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
+  const [txToEdit, setTxToEdit] = useState<Transaction | null>(null);
+
+  // Edit mutation form states
+  const [editType, setEditType] = useState<'Setor' | 'Tarik'>('Setor');
+  const [editAmount, setEditAmount] = useState<number>(0);
+  const [editAdminFee, setEditAdminFee] = useState<number>(0);
+  const [editDate, setEditDate] = useState<string>('');
+  const [editTime, setEditTime] = useState<string>('12:00');
+  const [editNote, setEditNote] = useState<string>('');
+  const [editCashier, setEditCashier] = useState<string>('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState<'Tunai' | 'Transfer'>('Tunai');
+  const [editBankName, setEditBankName] = useState<string>('');
   
   const isMaster = (currentUserRole || '').trim().toLowerCase() === 'master';
   
@@ -83,7 +96,7 @@ export default function SavingsManagement({
     success: boolean;
     message: string;
     student?: Santri;
-    balances?: { tabungan: number; penitipan: number; total: number };
+    balances?: { tabungan: number; total: number };
   } | null>(null);
   const [isScanningSim, setIsScanningSim] = useState(false);
 
@@ -427,15 +440,9 @@ export default function SavingsManagement({
       let valA: any = a[sortConfig.key as keyof Santri];
       let valB: any = b[sortConfig.key as keyof Santri];
       
-      if (sortConfig.key === 'tabungan') {
+      if (sortConfig.key === 'tabungan' || sortConfig.key === 'total') {
         valA = balA.tabungan;
         valB = balB.tabungan;
-      } else if (sortConfig.key === 'penitipan') {
-        valA = balA.penitipan;
-        valB = balB.penitipan;
-      } else if (sortConfig.key === 'total') {
-        valA = balA.total;
-        valB = balB.total;
       }
       
       if (valA === undefined) return 1;
@@ -466,8 +473,6 @@ export default function SavingsManagement({
         'Kelas': s.className,
         'Asrama': s.dorm || '-',
         'Saldo Tabungan': bal.tabungan,
-        'Saldo Penitipan': bal.penitipan,
-        'Total Saldo': bal.total,
         'Status': s.status
       };
     });
@@ -482,7 +487,7 @@ export default function SavingsManagement({
 
   const handleSendWaMessage = (student: Santri) => {
     const bal = calculateBalances(student.id, transactions);
-    const template = institution.waTemplateBalanceSummary || `*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFROMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*Saldo Penitipan :* {Saldo Penitipan}\n\n*TOTAL SALDO* : {TOTAL SALDO}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
+    const template = institution.waTemplateBalanceSummary || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFORMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*TOTAL SALDO* : {TOTAL SALDO}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
     
     const text = template
       .replace(/{NAMA PONDOK}/g, institution.name)
@@ -491,10 +496,9 @@ export default function SavingsManagement({
       .replace(/{ASRAMA}/g, student.dorm || '-')
       .replace(/{NIS}/g, student.nis)
       .replace(/{Saldo Tabungan}/g, formatCurrency(bal.tabungan))
-      .replace(/{Saldo Penitipan}/g, formatCurrency(bal.penitipan))
       .replace(/{WEBSITE}/g, window.location.origin)
       .replace(/{NAMA WEBSITE}/g, window.location.origin)
-      .replace(/{TOTAL SALDO}/g, formatCurrency(bal.total));
+      .replace(/{TOTAL SALDO}/g, formatCurrency(bal.tabungan));
     
     const cleanPhone = student.guardianPhone.replace(/\D/g, '');
     let waNumber = cleanPhone;
@@ -510,17 +514,16 @@ export default function SavingsManagement({
 
   const handleOpenPrintModal = (studentId: string) => {
     setSelectedStudentId(studentId);
-    setPrintTab('Tabungan');
     setShowPrintModal(true);
   };
 
   const activePrintStudent = students.find(s => s.id === selectedStudentId);
-  const activePrintBalances = selectedStudentId ? calculateBalances(selectedStudentId, transactions) : { tabungan: 0, penitipan: 0, total: 0 };
+  const activePrintBalances = selectedStudentId ? calculateBalances(selectedStudentId, transactions) : { tabungan: 0, total: 0 };
 
   const nonSavingsStudents = students.filter(s => !s.hasSavings);
 
-  const getMutasiTxs = (accountId: string, accType: string) => {
-    const txs = transactions.filter(t => t.santriId === accountId && t.accountType === accType)
+  const getMutasiTxs = (accountId: string) => {
+    const txs = transactions.filter(t => t.santriId === accountId)
       .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     let balance = 0;
     return txs.map(tx => {
@@ -528,6 +531,61 @@ export default function SavingsManagement({
       else balance -= tx.amount;
       return { ...tx, currentBalance: balance };
     });
+  };
+
+  const handleOpenEditTxModal = (tx: Transaction) => {
+    setTxToEdit(tx);
+    setEditType(tx.type || 'Setor');
+    setEditAmount(tx.amount || 0);
+    setEditAdminFee(tx.adminFee || 0);
+    const txDate = tx.date || (tx.timestamp ? tx.timestamp.split('T')[0] : new Date().toISOString().split('T')[0]);
+    setEditDate(txDate);
+    let timeStr = '12:00';
+    if (tx.timestamp && tx.timestamp.includes('T')) {
+      const timePart = tx.timestamp.split('T')[1];
+      if (timePart) timeStr = timePart.substring(0, 5);
+    }
+    setEditTime(timeStr);
+    setEditNote(tx.note === '-' ? '' : (tx.note || ''));
+    setEditCashier(tx.cashierName || 'Kasir');
+    setEditPaymentMethod(tx.paymentMethod || 'Tunai');
+    setEditBankName(tx.bankName || '');
+  };
+
+  const handleSaveEditTx = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!txToEdit || !onUpdateTransaction) return;
+
+    if (!editAmount || editAmount <= 0) {
+      alert('Nominal transaksi harus lebih besar dari 0!');
+      return;
+    }
+
+    if (!editDate) {
+      alert('Tanggal transaksi wajib diisi!');
+      return;
+    }
+
+    const calculatedNet = editType === 'Setor' ? editAmount : Math.max(0, editAmount - editAdminFee);
+    const constructedTimestamp = `${editDate}T${editTime || '12:00'}:00.000Z`;
+
+    const updatedTx: Transaction = {
+      ...txToEdit,
+      type: editType,
+      accountType: 'Tabungan',
+      amount: editAmount,
+      adminFee: editAdminFee,
+      netAmount: calculatedNet,
+      date: editDate,
+      timestamp: constructedTimestamp,
+      note: editNote.trim() || '-',
+      cashierName: editCashier.trim() || 'Kasir',
+      paymentMethod: editPaymentMethod,
+      bankName: editPaymentMethod === 'Transfer' ? (editBankName.trim() || undefined) : undefined
+    };
+
+    onUpdateTransaction(updatedTx);
+    setTxToEdit(null);
   };
 
   return (
@@ -539,7 +597,7 @@ export default function SavingsManagement({
             <BookOpen className="w-6 h-6 text-emerald-600" />
             DATA TABUNGAN
           </h2>
-          <p className="text-xs text-gray-500 mt-1">Pantau dan kelola saldo tabungan/penitipan serta cetak buku tabungan fisik santri.</p>
+          <p className="text-xs text-gray-500 mt-1">Pantau dan kelola saldo tabungan serta cetak buku tabungan fisik santri.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -717,12 +775,6 @@ export default function SavingsManagement({
                 <th className="px-5 py-4 text-right cursor-pointer hover:bg-emerald-100 transition" onClick={() => setSortConfig({ key: 'tabungan', direction: sortConfig?.key === 'tabungan' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
                   <div className="flex items-center justify-end gap-1">SALDO TABUNGAN {sortConfig?.key === 'tabungan' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</div>
                 </th>
-                <th className="px-5 py-4 text-right cursor-pointer hover:bg-emerald-100 transition" onClick={() => setSortConfig({ key: 'penitipan', direction: sortConfig?.key === 'penitipan' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
-                  <div className="flex items-center justify-end gap-1">SALDO PENITIPAN {sortConfig?.key === 'penitipan' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</div>
-                </th>
-                <th className="px-5 py-4 text-right cursor-pointer hover:bg-emerald-100 transition" onClick={() => setSortConfig({ key: 'total', direction: sortConfig?.key === 'total' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
-                  <div className="flex items-center justify-end gap-1">TOTAL SALDO {sortConfig?.key === 'total' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</div>
-                </th>
                 <th className="px-5 py-4 text-center">AKSI</th>
               </tr>
             </thead>
@@ -756,9 +808,7 @@ export default function SavingsManagement({
                           {!student.hasSavings ? 'Belum Dibuat' : (student.savingsActive !== false ? 'Aktif' : 'Tidak Aktif')}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-right font-black text-teal-800 font-mono">{formatCurrency(bal.tabungan)}</td>
-                      <td className="px-5 py-4 text-right font-black text-emerald-700 font-mono">{formatCurrency(bal.penitipan)}</td>
-                      <td className="px-5 py-4 text-right font-black text-emerald-950 font-mono bg-emerald-50/40">{formatCurrency(bal.total)}</td>
+                      <td className="px-5 py-4 text-right font-black text-teal-900 font-mono text-sm">{formatCurrency(bal.tabungan)}</td>
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           {!student.hasSavings ? (
@@ -840,371 +890,190 @@ export default function SavingsManagement({
               </button>
             </div>
 
-            {/* Panel Selector (Sliding Tab Layout) */}
-            <div className="bg-gray-100 p-1 rounded-xl flex relative gap-1">
-              <button
-                onClick={() => setPrintTab('Tabungan')}
-                className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all border-none cursor-pointer ${
-                  printTab === 'Tabungan' 
-                    ? 'bg-white text-emerald-950 shadow-sm font-black' 
-                    : 'text-gray-500 hover:text-gray-900 font-bold'
-                }`}
-              >
-                Buku Tabungan
-              </button>
-              <button
-                onClick={() => setPrintTab('Penitipan')}
-                className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all border-none cursor-pointer ${
-                  printTab === 'Penitipan' 
-                    ? 'bg-white text-emerald-950 shadow-sm font-black' 
-                    : 'text-gray-500 hover:text-gray-900 font-bold'
-                }`}
-              >
-                Buku Penitipan
-              </button>
-            </div>
-
-            {/* Slider Content Panel */}
+            {/* Passbook Content Panel */}
             <div className="bg-slate-50 p-5 rounded-2xl border border-emerald-100/40 relative overflow-hidden flex flex-col justify-between">
-              {printTab === 'Tabungan' ? (
-                <div className="space-y-4 animate-in fade-in duration-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-teal-800 uppercase tracking-widest">Akun Tabungan</span>
-                    <span className="text-xs font-black text-teal-900 font-mono bg-teal-100/50 px-2.5 py-1 rounded-lg">{formatCurrency(activePrintBalances.tabungan)}</span>
-                  </div>
-                  
-                  <div className="overflow-y-auto max-h-[250px] bg-white rounded-xl border border-teal-100/50 shadow-sm">
-                    <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                      <thead className="sticky top-0 bg-teal-50 shadow-sm z-10">
-                        <tr className="text-[9px] font-black text-teal-900 uppercase tracking-widest">
-                          <th className="px-4 py-2">ID Transaksi</th>
-                          <th className="px-4 py-2">Tanggal & Waktu</th>
-                          <th className="px-4 py-2 text-right">Kredit</th>
-                          <th className="px-4 py-2 text-right">Debit</th>
-                          <th className="px-4 py-2 text-right">Saldo</th>
-                          <th className="px-4 py-2">Admin / Petugas</th>
-                          <th className="px-4 py-2">Keterangan</th>
-                          {isMaster && onDeleteTransaction && <th className="px-3 py-2 text-center">Aksi</th>}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-teal-50 font-bold">
-                        {getMutasiTxs(activePrintStudent.id, 'Tabungan').length > 0 ? (
-                          getMutasiTxs(activePrintStudent.id, 'Tabungan').map((tx) => (
-                            <tr key={tx.id} className="hover:bg-teal-50/20">
-                              <td className="px-4 py-2 text-[10px] font-mono text-teal-900">{formatTxId(tx.id, transactions)}</td>
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
-                              <td className="px-4 py-2 text-right text-emerald-600 font-mono">{tx.type === 'Setor' ? formatCurrency(tx.amount) : '-'}</td>
-                              <td className="px-4 py-2 text-right text-rose-600 font-mono">{tx.type === 'Tarik' ? formatCurrency(tx.amount) : '-'}</td>
-                              <td className="px-4 py-2 text-right text-teal-950 font-mono">{formatCurrency(tx.currentBalance)}</td>
-                              <td className="px-4 py-2 text-[10px] text-gray-600">{tx.cashierName}</td>
-                              <td className="px-4 py-2 text-[10px] text-gray-600">
-                                <div className="font-bold text-teal-950">{tx.note || '-'}</div>
-                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                                    tx.paymentMethod === 'Transfer'
-                                      ? 'bg-blue-50 text-blue-700 border-blue-150'
-                                      : 'bg-amber-50 text-amber-700 border-amber-150'
-                                  }`}>
-                                    {tx.paymentMethod || 'Tunai'}
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black text-teal-800 uppercase tracking-widest">Akun Tabungan Santri</span>
+                  <span className="text-xs font-black text-teal-900 font-mono bg-teal-100/50 px-2.5 py-1 rounded-lg">{formatCurrency(activePrintBalances.tabungan)}</span>
+                </div>
+                
+                <div className="overflow-y-auto max-h-[250px] bg-white rounded-xl border border-teal-100/50 shadow-sm">
+                  <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
+                    <thead className="sticky top-0 bg-teal-50 shadow-sm z-10">
+                      <tr className="text-[9px] font-black text-teal-900 uppercase tracking-widest">
+                        <th className="px-4 py-2">ID Transaksi</th>
+                        <th className="px-4 py-2">Tanggal & Waktu</th>
+                        <th className="px-4 py-2 text-right">Kredit</th>
+                        <th className="px-4 py-2 text-right">Debit</th>
+                        <th className="px-4 py-2 text-right">Saldo</th>
+                        <th className="px-4 py-2">Admin / Petugas</th>
+                        <th className="px-4 py-2">Keterangan</th>
+                        {isMaster && (onDeleteTransaction || onUpdateTransaction) && <th className="px-3 py-2 text-center">Aksi</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-teal-50 font-bold">
+                      {getMutasiTxs(activePrintStudent.id).length > 0 ? (
+                        getMutasiTxs(activePrintStudent.id).map((tx) => (
+                          <tr key={tx.id} className="hover:bg-teal-50/20">
+                            <td className="px-4 py-2 text-[10px] font-mono text-teal-900">{formatTxId(tx.id, transactions)}</td>
+                            <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
+                            <td className="px-4 py-2 text-right text-emerald-600 font-mono">{tx.type === 'Setor' ? formatCurrency(tx.amount) : '-'}</td>
+                            <td className="px-4 py-2 text-right text-rose-600 font-mono">{tx.type === 'Tarik' ? formatCurrency(tx.amount) : '-'}</td>
+                            <td className="px-4 py-2 text-right text-teal-950 font-mono">{formatCurrency(tx.currentBalance)}</td>
+                            <td className="px-4 py-2 text-[10px] text-gray-600">{tx.cashierName}</td>
+                            <td className="px-4 py-2 text-[10px] text-gray-600">
+                              <div className="font-bold text-teal-950">{tx.note || '-'}</div>
+                              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                                  tx.paymentMethod === 'Transfer'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-150'
+                                    : 'bg-amber-50 text-amber-700 border-amber-150'
+                                }`}>
+                                  {tx.paymentMethod || 'Tunai'}
+                                </span>
+                                {tx.paymentMethod === 'Transfer' && tx.bankName && (
+                                  <span className="text-[8px] font-extrabold text-teal-700/70 uppercase font-mono bg-teal-50/50 border border-teal-100 px-1 py-0.5 rounded">
+                                    {tx.bankName}
                                   </span>
-                                  {tx.paymentMethod === 'Transfer' && tx.bankName && (
-                                    <span className="text-[8px] font-extrabold text-teal-700/70 uppercase font-mono bg-teal-50/50 border border-teal-100 px-1 py-0.5 rounded">
-                                      {tx.bankName}
-                                    </span>
+                                )}
+                              </div>
+                            </td>
+                            {isMaster && (
+                              <td className="px-3 py-2 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  {onUpdateTransaction && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditTxModal(tx)}
+                                      className="p-1 text-blue-600 hover:bg-blue-100 rounded-lg transition border-none bg-transparent cursor-pointer"
+                                      title="Edit Transaksi (Khusus Master)"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {onDeleteTransaction && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setTxToDelete(tx)}
+                                      className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition border-none bg-transparent cursor-pointer"
+                                      title="Hapus Transaksi (Khusus Master)"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                   )}
                                 </div>
                               </td>
-                              {isMaster && onDeleteTransaction && (
-                                <td className="px-3 py-2 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => setTxToDelete(tx)}
-                                    className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition border-none bg-transparent cursor-pointer"
-                                    title="Hapus Transaksi (Khusus Master)"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              )}
-                            </tr>
-                          ))
-                        ) : (
-                          <tr><td colSpan={isMaster && onDeleteTransaction ? 8 : 7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi tabungan</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <button
-                    onClick={() => printPassbook(activePrintStudent, transactions, institution, 'Tabungan')}
-                    className="w-full mt-2 py-3 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-md shadow-teal-900/10 flex items-center justify-center gap-2 cursor-pointer border-none"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Cetak Buku Tabungan
-                  </button>
-
-                  {/* Riwayat Pengajuan Setor Tabungan */}
-                  <div className="mt-5 space-y-3 pt-4 border-t border-teal-100/40 animate-in fade-in duration-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-teal-800 uppercase tracking-widest font-sans">Riwayat Pengajuan Setor Tabungan</span>
-                    </div>
-
-                    <div className="overflow-x-auto border border-teal-100/40 rounded-2xl bg-white shadow-inner max-h-[160px]">
-                      <table className="w-full border-collapse text-left text-xs text-gray-500">
-                        <thead className="bg-teal-50 text-teal-950 font-bold text-[9px] uppercase tracking-wider sticky top-0 z-10">
-                          <tr>
-                            <th className="px-3 py-2 border-b border-teal-100">Tanggal Pengajuan</th>
-                            <th className="px-3 py-2 border-b border-teal-100 text-right">Nominal</th>
-                            <th className="px-3 py-2 border-b border-teal-100">Bukti</th>
-                            <th className="px-3 py-2 border-b border-teal-100">Status</th>
-                            <th className="px-3 py-2 border-b border-teal-100">Keterangan</th>
-                            <th className="px-3 py-2 border-b border-teal-100 text-center">Aksi</th>
+                            )}
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 font-semibold">
-                          {(() => {
-                            const studentRegs = registrations.filter(r => r.santriId === activePrintStudent.id && (r.accountType === 'Tabungan' || !r.accountType));
-                            if (studentRegs.length === 0) {
-                              return (
-                                <tr>
-                                  <td colSpan={6} className="px-3 py-5 text-center text-gray-400 font-bold italic text-[9px]">
-                                    Belum ada riwayat pengajuan setor tabungan
-                                  </td>
-                                </tr>
-                              );
-                            }
-                            return studentRegs.map((reg) => (
-                              <tr key={reg.id} className="hover:bg-gray-50 transition">
-                                <td className="px-3 py-2 font-bold text-teal-950 text-[10px]">
-                                  {formatDateTimeDDMMYYYY(reg.timestamp)}
-                                </td>
-                                <td className="px-3 py-2 font-bold text-teal-950 text-right font-mono text-[10px]">
-                                  {formatCurrency(reg.amount || 0)}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {reg.transferReceiptUrl ? (
-                                    <a 
-                                      href={reg.transferReceiptUrl} 
-                                      target="_blank" 
-                                      rel="noreferrer"
-                                      className="text-[9px] font-black uppercase text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded transition border border-teal-150 inline-block"
-                                    >
-                                      Lihat Bukti
-                                    </a>
-                                  ) : (
-                                    <span className="text-[10px] text-gray-400 italic">Tidak ada</span>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                                    reg.status === 'Confirmed'
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-150'
-                                      : reg.status === 'Rejected'
-                                      ? 'bg-red-50 text-red-700 border-red-150'
-                                      : 'bg-amber-50 text-amber-700 border-amber-150 animate-pulse'
-                                  }`}>
-                                    {reg.status === 'Confirmed' ? 'Disetujui' : reg.status === 'Rejected' ? 'Ditolak' : 'Menunggu'}
-                                  </span>
-                                  {reg.status === 'Rejected' && reg.rejectionReason && (
-                                    <p className="text-[9px] text-red-500 font-semibold mt-1 font-sans">Alasan: {reg.rejectionReason}</p>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2 text-[10px] font-semibold text-gray-600 max-w-[120px] truncate" title={reg.note}>
-                                  {reg.note || '-'}
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm('Apakah Anda yakin ingin menghapus riwayat pengajuan ini secara permanen?')) {
-                                        if (onDeleteRegistration) {
-                                          onDeleteRegistration(reg.id);
-                                        }
-                                      }
-                                    }}
-                                    className="p-1 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg transition border border-red-100 cursor-pointer inline-flex items-center justify-center"
-                                    title="Hapus Riwayat"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ));
-                          })()}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                        ))
+                      ) : (
+                        <tr><td colSpan={isMaster ? 8 : 7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi tabungan</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              ) : (
-                <div className="space-y-4 animate-in fade-in duration-200">
+
+                <button
+                  onClick={() => printPassbook(activePrintStudent, transactions, institution, 'Tabungan')}
+                  className="w-full mt-2 py-3 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-md shadow-teal-900/10 flex items-center justify-center gap-2 cursor-pointer border-none"
+                >
+                  <Printer className="w-4 h-4" />
+                  Cetak Buku Tabungan
+                </button>
+
+                {/* Riwayat Pengajuan Setor Tabungan */}
+                <div className="mt-5 space-y-3 pt-4 border-t border-teal-100/40 animate-in fade-in duration-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">AKUN PENITIPAN</span>
-                    <span className="text-xs font-black text-emerald-900 font-mono bg-emerald-100/60 px-2.5 py-1 rounded-lg">{formatCurrency(activePrintBalances.penitipan)}</span>
+                    <span className="text-[10px] font-black text-teal-800 uppercase tracking-widest font-sans">Riwayat Pengajuan Setor Tabungan</span>
                   </div>
 
-                  <div className="overflow-y-auto max-h-[250px] bg-white rounded-xl border border-emerald-100/50 shadow-sm">
-                    <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                      <thead className="sticky top-0 bg-emerald-50 shadow-sm z-10">
-                        <tr className="text-[9px] font-black text-emerald-900 uppercase tracking-widest">
-                          <th className="px-4 py-2">ID Transaksi</th>
-                          <th className="px-4 py-2">Tanggal & Waktu</th>
-                          <th className="px-4 py-2 text-right">Kredit</th>
-                          <th className="px-4 py-2 text-right">Debit</th>
-                          <th className="px-4 py-2 text-right">Saldo</th>
-                          <th className="px-4 py-2">Admin / Petugas</th>
-                          <th className="px-4 py-2">Keterangan</th>
-                          {isMaster && onDeleteTransaction && <th className="px-3 py-2 text-center">Aksi</th>}
+                  <div className="overflow-x-auto border border-teal-100/40 rounded-2xl bg-white shadow-inner max-h-[160px]">
+                    <table className="w-full border-collapse text-left text-xs text-gray-500">
+                      <thead className="bg-teal-50 text-teal-950 font-bold text-[9px] uppercase tracking-wider sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 py-2 border-b border-teal-100">Tanggal Pengajuan</th>
+                          <th className="px-3 py-2 border-b border-teal-100 text-right">Nominal</th>
+                          <th className="px-3 py-2 border-b border-teal-100">Bukti</th>
+                          <th className="px-3 py-2 border-b border-teal-100">Status</th>
+                          <th className="px-3 py-2 border-b border-teal-100">Keterangan</th>
+                          <th className="px-3 py-2 border-b border-teal-100 text-center">Aksi</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-emerald-50 font-bold">
-                        {getMutasiTxs(activePrintStudent.id, 'Penitipan').length > 0 ? (
-                          getMutasiTxs(activePrintStudent.id, 'Penitipan').map((tx) => (
-                            <tr key={tx.id} className="hover:bg-emerald-50/20">
-                              <td className="px-4 py-2 text-[10px] font-mono text-emerald-900">{formatTxId(tx.id, transactions)}</td>
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
-                              <td className="px-4 py-2 text-right text-emerald-600 font-mono">{tx.type === 'Setor' ? formatCurrency(tx.amount) : '-'}</td>
-                              <td className="px-4 py-2 text-right text-rose-600 font-mono">{tx.type === 'Tarik' ? formatCurrency(tx.amount) : '-'}</td>
-                              <td className="px-4 py-2 text-right text-emerald-950 font-mono">{formatCurrency(tx.currentBalance)}</td>
-                              <td className="px-4 py-2 text-[10px] text-gray-600">{tx.cashierName}</td>
-                              <td className="px-4 py-2 text-[10px] text-gray-600">
-                                <div className="font-bold text-emerald-950">{tx.note || '-'}</div>
-                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                                    tx.paymentMethod === 'Transfer'
-                                      ? 'bg-blue-50 text-blue-700 border-blue-150'
-                                      : 'bg-amber-50 text-amber-700 border-amber-150'
-                                  }`}>
-                                    {tx.paymentMethod || 'Tunai'}
-                                  </span>
-                                  {tx.paymentMethod === 'Transfer' && tx.bankName && (
-                                    <span className="text-[8px] font-extrabold text-emerald-700/70 uppercase font-mono bg-emerald-50/50 border border-emerald-100 px-1 py-0.5 rounded">
-                                      {tx.bankName}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              {isMaster && onDeleteTransaction && (
-                                <td className="px-3 py-2 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => setTxToDelete(tx)}
-                                    className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg transition border-none bg-transparent cursor-pointer"
-                                    title="Hapus Transaksi (Khusus Master)"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                      <tbody className="divide-y divide-gray-100 font-semibold">
+                        {(() => {
+                          const studentRegs = registrations.filter(r => r.santriId === activePrintStudent.id && (r.accountType === 'Tabungan' || !r.accountType));
+                          if (studentRegs.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={6} className="px-3 py-5 text-center text-gray-400 font-bold italic text-[9px]">
+                                  Belum ada riwayat pengajuan setor tabungan
                                 </td>
-                              )}
+                              </tr>
+                            );
+                          }
+                          return studentRegs.map((reg) => (
+                            <tr key={reg.id} className="hover:bg-gray-50 transition">
+                              <td className="px-3 py-2 font-bold text-teal-950 text-[10px]">
+                                {formatDateTimeDDMMYYYY(reg.timestamp)}
+                              </td>
+                              <td className="px-3 py-2 font-bold text-teal-950 text-right font-mono text-[10px]">
+                                {formatCurrency(reg.amount || 0)}
+                              </td>
+                              <td className="px-3 py-2">
+                                {reg.transferReceiptUrl ? (
+                                  <a 
+                                    href={reg.transferReceiptUrl} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="text-[9px] font-black uppercase text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded transition border border-teal-150 inline-block"
+                                  >
+                                    Lihat Bukti
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400 italic">Tidak ada</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                                  reg.status === 'Confirmed'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-150'
+                                    : reg.status === 'Rejected'
+                                    ? 'bg-red-50 text-red-700 border-red-150'
+                                    : 'bg-amber-50 text-amber-700 border-amber-150 animate-pulse'
+                                }`}>
+                                  {reg.status === 'Confirmed' ? 'Disetujui' : reg.status === 'Rejected' ? 'Ditolak' : 'Menunggu'}
+                                </span>
+                                {reg.status === 'Rejected' && reg.rejectionReason && (
+                                  <p className="text-[9px] text-red-500 font-semibold mt-1 font-sans">Alasan: {reg.rejectionReason}</p>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-[10px] font-semibold text-gray-600 max-w-[120px] truncate" title={reg.note}>
+                                {reg.note || '-'}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm('Apakah Anda yakin ingin menghapus riwayat pengajuan ini secara permanen?')) {
+                                      if (onDeleteRegistration) {
+                                        onDeleteRegistration(reg.id);
+                                      }
+                                    }
+                                  }}
+                                  className="p-1 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg transition border border-red-100 cursor-pointer inline-flex items-center justify-center"
+                                  title="Hapus Riwayat"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
                             </tr>
-                          ))
-                        ) : (
-                          <tr><td colSpan={isMaster && onDeleteTransaction ? 8 : 7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat mutasi penitipan</td></tr>
-                        )}
+                          ));
+                        })()}
                       </tbody>
                     </table>
                   </div>
-
-                  <button
-                    onClick={() => printPassbook(activePrintStudent, transactions, institution, 'Penitipan')}
-                    className="w-full mt-2 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 cursor-pointer border-none"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Cetak Buku Penitipan
-                  </button>
-
-                  {/* Riwayat Pengajuan Setor Penitipan */}
-                  <div className="mt-5 space-y-3 pt-4 border-t border-emerald-100/40 animate-in fade-in duration-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest font-sans">Riwayat Pengajuan Setor Penitipan</span>
-                    </div>
-
-                    <div className="overflow-x-auto border border-emerald-100/40 rounded-2xl bg-white shadow-inner max-h-[160px]">
-                      <table className="w-full border-collapse text-left text-xs text-gray-500">
-                        <thead className="bg-emerald-50 text-emerald-950 font-bold text-[9px] uppercase tracking-wider sticky top-0 z-10">
-                          <tr>
-                            <th className="px-3 py-2 border-b border-emerald-100">Tanggal Pengajuan</th>
-                            <th className="px-3 py-2 border-b border-emerald-100 text-right">Nominal</th>
-                            <th className="px-3 py-2 border-b border-emerald-100">Bukti</th>
-                            <th className="px-3 py-2 border-b border-emerald-100">Status</th>
-                            <th className="px-3 py-2 border-b border-emerald-100">Keterangan</th>
-                            <th className="px-3 py-2 border-b border-emerald-100 text-center">Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 font-semibold">
-                          {(() => {
-                            const studentRegs = registrations.filter(r => r.santriId === activePrintStudent.id && r.accountType === 'Penitipan');
-                            if (studentRegs.length === 0) {
-                              return (
-                                <tr>
-                                  <td colSpan={6} className="px-3 py-5 text-center text-gray-400 font-bold italic text-[9px]">
-                                    Belum ada riwayat pengajuan setor penitipan
-                                  </td>
-                                </tr>
-                              );
-                            }
-                            return studentRegs.map((reg) => (
-                              <tr key={reg.id} className="hover:bg-gray-50 transition">
-                                <td className="px-3 py-2 font-bold text-emerald-950 text-[10px]">
-                                  {formatDateTimeDDMMYYYY(reg.timestamp)}
-                                </td>
-                                <td className="px-3 py-2 font-bold text-emerald-950 text-right font-mono text-[10px]">
-                                  {formatCurrency(reg.amount || 0)}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {reg.transferReceiptUrl ? (
-                                    <a 
-                                      href={reg.transferReceiptUrl} 
-                                      target="_blank" 
-                                      rel="noreferrer"
-                                      className="text-[9px] font-black uppercase text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 px-2 py-0.5 rounded transition border border-teal-150 inline-block"
-                                    >
-                                      Lihat Bukti
-                                    </a>
-                                  ) : (
-                                    <span className="text-[10px] text-gray-400 italic">Tidak ada</span>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                                    reg.status === 'Confirmed'
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-150'
-                                      : reg.status === 'Rejected'
-                                      ? 'bg-red-50 text-red-700 border-red-150'
-                                      : 'bg-amber-50 text-amber-700 border-amber-150 animate-pulse'
-                                  }`}>
-                                    {reg.status === 'Confirmed' ? 'Disetujui' : reg.status === 'Rejected' ? 'Ditolak' : 'Menunggu'}
-                                  </span>
-                                  {reg.status === 'Rejected' && reg.rejectionReason && (
-                                    <p className="text-[9px] text-red-500 font-semibold mt-1 font-sans">Alasan: {reg.rejectionReason}</p>
-                                  )}
-                                </td>
-                                <td className="px-3 py-2 text-[10px] font-semibold text-gray-600 max-w-[120px] truncate" title={reg.note}>
-                                  {reg.note || '-'}
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  <button
-                                    onClick={() => {
-                                      if (window.confirm('Apakah Anda yakin ingin menghapus riwayat pengajuan ini secara permanen?')) {
-                                        if (onDeleteRegistration) {
-                                          onDeleteRegistration(reg.id);
-                                        }
-                                      }
-                                    }}
-                                    className="p-1 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg transition border border-red-100 cursor-pointer inline-flex items-center justify-center"
-                                    title="Hapus Riwayat"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ));
-                          })()}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
                 </div>
-              )}
+              </div>
             </div>
             
             <p className="text-[10px] text-gray-400 font-medium text-center italic">
@@ -1601,6 +1470,208 @@ export default function SavingsManagement({
                 Ya, Hapus Transaksi
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT TRANSAKSI / MUTASI (KHUSUS MASTER) */}
+      {txToEdit && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-lg overflow-hidden border border-blue-100 shadow-2xl relative flex flex-col transform animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-5 border-b border-blue-100 flex items-center justify-between bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-800/80 rounded-xl text-blue-200 shadow-inner">
+                  <Edit2 className="w-5 h-5 text-blue-300" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white">Edit Data Mutasi Transaksi</h3>
+                  <p className="text-[10px] text-blue-200 font-bold">Otoritas Master • Ref ID: {formatTxId(txToEdit.id, transactions)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTxToEdit(null)}
+                className="p-1.5 hover:bg-blue-800 rounded-full transition border-none bg-transparent cursor-pointer text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEditTx} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block">Santri Terkait</span>
+                  <span className="font-black text-slate-900 uppercase">{txToEdit.santriName || 'Santri'}</span>
+                </div>
+                <span className="px-2.5 py-1 bg-teal-100 text-teal-900 rounded-lg text-[9px] font-black uppercase tracking-widest border border-teal-200">
+                  Tabungan
+                </span>
+              </div>
+
+              {/* Tipe Transaksi */}
+              <div>
+                <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1.5">Jenis Aliran Dana</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditType('Setor')}
+                    className={`py-2.5 px-3 rounded-xl border-2 text-center text-xs font-black transition cursor-pointer ${
+                      editType === 'Setor'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-950 shadow-sm'
+                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    📥 Setor (+)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditType('Tarik')}
+                    className={`py-2.5 px-3 rounded-xl border-2 text-center text-xs font-black transition cursor-pointer ${
+                      editType === 'Tarik'
+                        ? 'border-rose-600 bg-rose-50 text-rose-950 shadow-sm'
+                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    📤 Tarik (-)
+                  </button>
+                </div>
+              </div>
+
+              {/* Nominal & Biaya Admin */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Nominal Transaksi (Rp)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">Rp</span>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={editAmount || ''}
+                      onChange={(e) => setEditAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl font-mono text-sm font-black text-slate-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Biaya Admin (Rp)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">Rp</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editAdminFee || 0}
+                      onChange={(e) => setEditAdminFee(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl font-mono text-sm font-black text-slate-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tanggal & Jam */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Tanggal Transaksi</label>
+                  <input
+                    type="date"
+                    required
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Waktu / Jam (WIB)</label>
+                  <input
+                    type="time"
+                    required
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+              </div>
+
+              {/* Keterangan */}
+              <div>
+                <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Keterangan / Catatan</label>
+                <input
+                  type="text"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder="Contoh: Setoran uang saku"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              {/* Kasir & Metode Pembayaran */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Kasir / Petugas</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCashier}
+                    onChange={(e) => setEditCashier(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Metode Pembayaran</label>
+                  <select
+                    value={editPaymentMethod}
+                    onChange={(e) => setEditPaymentMethod(e.target.value as any)}
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                  >
+                    <option value="Tunai">Tunai</option>
+                    <option value="Transfer">Transfer Bank</option>
+                  </select>
+                </div>
+              </div>
+
+              {editPaymentMethod === 'Transfer' && (
+                <div>
+                  <label className="block text-gray-600 font-black uppercase tracking-wider text-[10px] mb-1">Nama Bank Transfer</label>
+                  <input
+                    type="text"
+                    value={editBankName}
+                    onChange={(e) => setEditBankName(e.target.value)}
+                    placeholder="Contoh: BRI / BCA / Mandiri / BSI"
+                    className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+              )}
+
+              {/* Net preview */}
+              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex justify-between items-center text-xs">
+                <span className="text-blue-900 font-black uppercase text-[10px] tracking-wider">Perkiraan Saldo Net:</span>
+                <span className="font-mono font-black text-sm text-blue-950">
+                  {formatCurrency(editType === 'Setor' ? editAmount : Math.max(0, editAmount - editAdminFee))}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setTxToEdit(null)}
+                  className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-xl border border-slate-200 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition shadow-md shadow-blue-900/20 cursor-pointer border-none"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

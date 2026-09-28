@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Santri, Transaction, InstitutionSettings, User } from '../types';
-import { calculateBalances } from '../data/mockData';
+import { Santri, Transaction, InstitutionSettings, User } from '../../types';
+import { calculateBalances } from '../../data/mockData';
 import { Search, UserPlus, MessageCircle, Users, FileDown, FileUp, Edit2, Trash2, BookOpen, X, Check, Eye, Filter, Trash, CheckCircle2, MoreHorizontal, Coins, Info, FileSpreadsheet, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { printPassbook } from '../lib/printHelper';
-import { formatDateDDMMYYYY } from '../lib/dateUtils';
+import { printPassbook } from '../../lib/printHelper';
+import { formatDateDDMMYYYY } from '../../lib/dateUtils';
 
 interface StudentManagementProps {
   students: Santri[];
@@ -111,9 +111,9 @@ export default function StudentManagement({
       let aVal: any = a[sortConfig.key as keyof Santri];
       let bVal: any = b[sortConfig.key as keyof Santri];
       
-      if (sortConfig.key === 'tabungan' || sortConfig.key === 'penitipan') {
-        aVal = calculateBalances(a.id, transactions)[sortConfig.key as 'tabungan' | 'penitipan'];
-        bVal = calculateBalances(b.id, transactions)[sortConfig.key as 'tabungan' | 'penitipan'];
+      if (sortConfig.key === 'tabungan') {
+        aVal = calculateBalances(a.id, transactions).tabungan;
+        bVal = calculateBalances(b.id, transactions).tabungan;
       }
       
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -409,8 +409,6 @@ export default function StudentManagement({
         'Asrama': s.dorm,
         'No. WA Wali': s.guardianPhone,
         'Saldo Tabungan': bal.tabungan,
-        'Saldo Penitipan': bal.penitipan,
-        'Total Saldo': bal.total,
         'Status': s.status
       };
     });
@@ -427,7 +425,7 @@ export default function StudentManagement({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  const currentBalances = selectedStudentId ? calculateBalances(selectedStudentId, transactions) : { tabungan: 0, penitipan: 0, total: 0 };
+  const currentBalances = selectedStudentId ? calculateBalances(selectedStudentId, transactions) : { tabungan: 0, total: 0 };
   const selectedStudent = students.find(s => s.id === selectedStudentId);
 
   return (
@@ -609,7 +607,7 @@ export default function StudentManagement({
                           {student.guardianPhone && student.guardianPhone !== '-' && (
                             <button
                               onClick={() => {
-                                const template = institution.waTemplateAccountData || institution.waTemplateRegistration || `*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}`;
+                                const template = institution.waTemplateAccountData || institution.waTemplateRegistration || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}`;
                                 const portalUrl = window.location.origin;
                                 const text = template
                                   .replace(/{NAMA PONDOK}/g, institution.name)
@@ -924,11 +922,11 @@ export default function StudentManagement({
 
             <div className="p-8 flex-1 overflow-y-auto space-y-8">
               {/* Balances and History Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 {/* Panel Tabungan */}
                 <div className="flex flex-col border border-teal-200 rounded-[24px] overflow-hidden bg-white shadow-sm">
                   <div className="p-5 bg-gradient-to-br from-teal-50 to-teal-100 border-b border-teal-200">
-                    <span className="text-[10px] font-black text-teal-700 uppercase tracking-widest block">SALDO TABUNGAN</span>
+                    <span className="text-[10px] font-black text-teal-700 uppercase tracking-widest block">SALDO TABUNGAN SANTRI</span>
                     <div className="text-3xl font-black text-teal-950 mt-1">{formatCurrency(currentBalances.tabungan)}</div>
                   </div>
                   <div className="flex-1 overflow-y-auto max-h-[300px] p-0">
@@ -969,51 +967,6 @@ export default function StudentManagement({
                     </button>
                   </div>
                 </div>
-
-                {/* Panel Penitipan */}
-                <div className="flex flex-col border border-emerald-200 rounded-[24px] overflow-hidden bg-white shadow-sm">
-                  <div className="p-5 bg-gradient-to-br from-emerald-50 to-emerald-100 border-b border-emerald-200">
-                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest block">SALDO PENITIPAN</span>
-                    <div className="text-3xl font-black text-emerald-950 mt-1">{formatCurrency(currentBalances.penitipan)}</div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto max-h-[300px] p-0">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="sticky top-0 bg-emerald-50 shadow-sm z-10">
-                        <tr className="text-[9px] font-black text-emerald-900 uppercase tracking-widest">
-                          <th className="px-4 py-2">Waktu</th>
-                          <th className="px-4 py-2">Tipe</th>
-                          <th className="px-4 py-2 text-right">Nominal</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-50 font-bold">
-                        {transactions.filter(t => t.santriId === selectedStudent.id && t.accountType === 'Penitipan').length > 0 ? (
-                          transactions.filter(t => t.santriId === selectedStudent.id && t.accountType === 'Penitipan')
-                            .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                            .map((tx) => (
-                            <tr key={tx.id} className="hover:bg-emerald-50/20">
-                              <td className="px-4 py-2 text-[9px] font-mono text-gray-400">{formatDateDDMMYYYY(tx.timestamp || tx.date)}</td>
-                              <td className={`px-4 py-2 text-[10px] font-black ${tx.type === 'Setor' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {tx.type === 'Setor' ? 'SETOR' : 'TARIK'}
-                              </td>
-                              <td className="px-4 py-2 text-right text-emerald-950">{formatCurrency(tx.amount)}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">Belum ada riwayat</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="p-4 bg-emerald-50 border-t border-emerald-100 mt-auto">
-                    <button 
-                      onClick={() => printPassbook(selectedStudent, transactions, institution, 'Penitipan')}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition active:scale-95 border-none"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      Cetak Buku Penitipan PDF
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -1032,7 +985,7 @@ export default function StudentManagement({
       {/* SINGLE DELETE CONFIRM MODAL */}
       {deleteConfirmId && (() => {
         const studentBalances = calculateBalances(deleteConfirmId, transactions);
-        const hasBalance = studentBalances.tabungan > 0 || studentBalances.penitipan > 0;
+        const hasBalance = studentBalances.tabungan > 0;
         const studentObj = students.find(s => s.id === deleteConfirmId);
 
         return (
@@ -1054,7 +1007,7 @@ export default function StudentManagement({
                         <AlertTriangle className="w-3.5 h-3.5" /> Peringatan Saldo Masih Ada!
                       </p>
                       <p className="text-[11px] text-amber-900 font-bold leading-normal">
-                        Santri ini masih memiliki sisa saldo sebesar <span className="font-black">Tabungan: Rp {studentBalances.tabungan.toLocaleString('id-ID')}</span> dan <span className="font-black">Penitipan: Rp {studentBalances.penitipan.toLocaleString('id-ID')}</span>.
+                        Santri ini masih memiliki sisa saldo sebesar <span className="font-black">Tabungan: Rp {studentBalances.tabungan.toLocaleString('id-ID')}</span>.
                       </p>
                       <p className="text-[10px] text-amber-700 font-bold">
                         Masukkan Password Master untuk menghapus paksa dan menghanguskan seluruh saldonya.
@@ -1066,7 +1019,7 @@ export default function StudentManagement({
                         <AlertTriangle className="w-3.5 h-3.5" /> Penghapusan Ditolak!
                       </p>
                       <p className="text-[11px] text-red-900 font-bold leading-normal">
-                        Izin Hapus Santri Ber-Saldo dinonaktifkan. Anda tidak dapat menghapus santri <span className="font-black">{studentObj?.name}</span> karena masih memiliki sisa saldo sebesar <span className="font-black">Tabungan: Rp {studentBalances.tabungan.toLocaleString('id-ID')}</span> dan <span className="font-black">Penitipan: Rp {studentBalances.penitipan.toLocaleString('id-ID')}</span>.
+                        Izin Hapus Santri Ber-Saldo dinonaktifkan. Anda tidak dapat menghapus santri <span className="font-black">{studentObj?.name}</span> karena masih memiliki sisa saldo sebesar <span className="font-black">Tabungan: Rp {studentBalances.tabungan.toLocaleString('id-ID')}</span>.
                       </p>
                       <p className="text-[10px] text-red-700 font-bold">
                         Silakan lakukan penarikan saldo terlebih dahulu hingga nihil sebelum menghapus data santri ini.
@@ -1322,7 +1275,7 @@ export default function StudentManagement({
       {isBulkDeleteConfirm && (() => {
         const studentsWithBalance = selectedIds.filter(id => {
           const bal = calculateBalances(id, transactions);
-          return bal.tabungan > 0 || bal.penitipan > 0;
+          return bal.tabungan > 0;
         });
         const bulkHasBalance = studentsWithBalance.length > 0;
         const names = studentsWithBalance.map(id => students.find(s => s.id === id)?.name || id).join(', ');

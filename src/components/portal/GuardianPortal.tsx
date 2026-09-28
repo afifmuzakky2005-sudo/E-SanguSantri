@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Santri, Transaction, InstitutionSettings, FinancialSettings, PendingRegistration } from '../types';
-import { calculateBalances } from '../data/mockData';
-import { printPassbook, formatTxId } from '../lib/printHelper';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../lib/dateUtils';
-import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
+import { Santri, Transaction, InstitutionSettings, FinancialSettings, PendingRegistration } from '../../types';
+import { calculateBalances } from '../../data/mockData';
+import { printPassbook, formatTxId } from '../../lib/printHelper';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../../lib/dateUtils';
+import { playSuccessSound, playErrorSound } from '../../lib/soundHelper';
 import { LogIn, KeyRound, Phone, CheckCircle2, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Printer, Calendar, Search, Info, UserPlus, MessageSquare, X, CheckCircle, Shield, BookOpen, Activity, TrendingUp, Sparkles, LogOut, User, Camera, QrCode, AlertCircle, PlusCircle, Upload, Image as ImageIcon, Clock, ChevronRight, Eye, ScanLine } from 'lucide-react';
-import { AllocationPieChart } from './VisualCharts';
-import { QrScannerModal } from './QrScannerModal';
-import { InlineQrScanner } from './InlineQrScanner';
-import { PhysicalQrScanner } from './PhysicalQrScanner';
+import { AllocationPieChart } from '../admin/VisualCharts';
+import { QrScannerModal } from '../qr/QrScannerModal';
+import { InlineQrScanner } from '../qr/InlineQrScanner';
+import { PhysicalQrScanner } from '../qr/PhysicalQrScanner';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { PWAInstallPrompt } from './PWAInstallBanner';
+import { PWAInstallPrompt } from '../common/PWAInstallBanner';
 
 interface GuardianPortalProps {
   students: Santri[];
@@ -20,6 +20,7 @@ interface GuardianPortalProps {
   onAdminLoginClick: () => void; // Callback to trigger admin login view in parent
   onRegister?: (reg: Omit<PendingRegistration, 'id' | 'timestamp' | 'status'>) => void;
   registrations?: PendingRegistration[];
+  initialNis?: string;
 }
 
 export default function GuardianPortal({
@@ -29,7 +30,8 @@ export default function GuardianPortal({
   financial,
   onAdminLoginClick,
   onRegister,
-  registrations = []
+  registrations = [],
+  initialNis
 }: GuardianPortalProps) {
   // View state: 'portal' (default), 'register', or 'logged_in' (handled by loggedInStudent)
   const [view, setView] = useState<'portal' | 'register'>('portal');
@@ -63,8 +65,20 @@ export default function GuardianPortal({
 
   // Filter states
   const [filterType, setFilterType] = useState<'Semua' | 'Setor' | 'Tarik'>('Semua');
-  const [filterPos, setFilterPos] = useState<'Semua' | 'Tabungan' | 'Penitipan'>('Semua');
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+
+  // Auto-search or login if initialNis provided via route parameter /cek/:nis
+  React.useEffect(() => {
+    if (initialNis && students.length > 0) {
+      const match = students.find(s => s.nis === initialNis || s.id === initialNis);
+      if (match) {
+        setLoggedInStudent(match);
+        playSuccessSound();
+      } else {
+        setNisInput(initialNis);
+      }
+    }
+  }, [initialNis, students]);
 
   // Method setting for Cek Saldo
   const rawMethod = financial?.balanceCheckMethod;
@@ -94,11 +108,9 @@ export default function GuardianPortal({
 
   // Passbook modal state
   const [showPassbookModal, setShowPassbookModal] = useState(false);
-  const [passbookTab, setPassbookTab] = useState<'Tabungan' | 'Penitipan'>('Tabungan');
 
   // Deposit Application states
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [depositAccountType, setDepositAccountType] = useState<'Tabungan' | 'Penitipan'>('Tabungan');
   const [depositAmount, setDepositAmount] = useState<number>(0);
   const [depositReceipt, setDepositReceipt] = useState<string>('');
   const [depositNote, setDepositNote] = useState<string>('');
@@ -190,9 +202,9 @@ export default function GuardianPortal({
     }, 1500);
   };
 
-  const handlePrintPassbook = (type: 'Tabungan' | 'Penitipan') => {
+  const handlePrintPassbook = () => {
     if (!loggedInStudent) return;
-    printPassbook(loggedInStudent, transactions, institution, type);
+    printPassbook(loggedInStudent, transactions, institution, 'Tabungan');
   };
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
@@ -297,7 +309,7 @@ export default function GuardianPortal({
         dorm: loggedInStudent.dorm,
         guardianPhone: loggedInStudent.guardianPhone || '-',
         santriId: loggedInStudent.id,
-        accountType: depositAccountType,
+        accountType: 'Tabungan',
         amount: depositAmount,
         transferReceiptUrl: depositReceipt,
         note: depositNote,
@@ -329,13 +341,12 @@ export default function GuardianPortal({
 
   const studentBalances = loggedInStudent 
     ? calculateBalances(loggedInStudent.id, transactions)
-    : { tabungan: 0, penitipan: 0, total: 0 };
+    : { tabungan: 0, total: 0 };
 
   // Filtered transactions for the view table
   const filteredTransactions = studentTransactions.filter(tx => {
     const matchesType = filterType === 'Semua' || tx.type === filterType;
-    const matchesPos = filterPos === 'Semua' || tx.accountType === filterPos;
-    return matchesType && matchesPos;
+    return matchesType;
   });
 
   const formatCurrency = (val: number) => {
@@ -430,7 +441,7 @@ export default function GuardianPortal({
               <div className="text-center max-w-3xl mx-auto space-y-4">
                 <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-emerald-950">Portal Cek Keuangan Santri</h2>
                 <p className="text-xs text-emerald-900/70 font-black leading-relaxed max-w-lg mx-auto uppercase tracking-[0.1em]">
-                  LAYANAN SISTEM TABUNGAN DAN PENITIPAN UANG SANTRI.
+                  LAYANAN SISTEM TABUNGAN UANG SANTRI.
                 </p>
               </div>
 
@@ -830,51 +841,24 @@ export default function GuardianPortal({
                 {/* Unified Premium Balances Card */}
                 <div className="bg-gradient-to-br from-emerald-900 via-teal-950 to-emerald-950 text-white p-5 rounded-[24px] border border-emerald-800/20 shadow-2xl space-y-4">
                   <div className="space-y-1">
-                    <span className="text-[8px] text-emerald-300 font-black uppercase tracking-widest block">Total Dana Gabungan</span>
-                    <span className="text-2xl font-black text-amber-300 block font-mono">{formatCurrency(studentBalances.total)}</span>
+                    <span className="text-[8px] text-emerald-300 font-black uppercase tracking-widest block">Saldo Tabungan Santri</span>
+                    <span className="text-3xl font-black text-amber-300 block font-mono">{formatCurrency(studentBalances.tabungan)}</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-                    <div className="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[8px] text-emerald-200 font-bold uppercase tracking-wider">Tabungan</span>
-                        <span className="shrink-0">
-                          {financial.windowOpen ? <Unlock className="w-2.5 h-2.5 text-emerald-300" /> : <Lock className="w-2.5 h-2.5 text-amber-300" />}
-                        </span>
-                      </div>
-                      <span className="text-xs font-black block font-mono text-emerald-100">{formatCurrency(studentBalances.tabungan)}</span>
-                      <span className="text-[8px] text-emerald-300/80 block font-medium">
-                        {financial.windowOpen ? 'Dapat ditarik' : 'Terkunci'}
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] text-emerald-200 font-bold uppercase tracking-wider block">Status Penarikan</span>
+                      <span className="text-xs font-black text-emerald-100 block">
+                        {financial.windowOpen ? 'Jendela Penarikan Dibuka' : 'Penarikan Terkunci (Sesuai Jadwal)'}
                       </span>
                     </div>
-
-                    <div className="space-y-1 bg-white/5 p-2.5 rounded-xl border border-white/5">
-                      <span className="text-[8px] text-emerald-200 font-bold uppercase tracking-wider block">Penitipan</span>
-                      <span className="text-xs font-black block font-mono text-emerald-100">{formatCurrency(studentBalances.penitipan)}</span>
-                      <span className="text-[8px] text-emerald-300/80 block font-medium">Bebas ditarik</span>
-                    </div>
-                  </div>
-
-                  {/* Horizontal Allocation Progress Bar */}
-                  <div className="space-y-1 pt-1">
-                    <div className="flex justify-between text-[8px] font-black uppercase tracking-wider text-emerald-200">
-                      <span>Tabungan ({studentBalances.total > 0 ? Math.round((studentBalances.tabungan / studentBalances.total) * 100) : 0}%)</span>
-                      <span>Penitipan ({studentBalances.total > 0 ? Math.round((studentBalances.penitipan / studentBalances.total) * 100) : 0}%)</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden flex">
-                      <div 
-                        className="bg-teal-400 h-full transition-all duration-500" 
-                        style={{ width: `${studentBalances.total > 0 ? (studentBalances.tabungan / studentBalances.total) * 100 : 0}%` }}
-                      />
-                      <div 
-                        className="bg-amber-400 h-full transition-all duration-500 flex-1" 
-                      />
+                    <div className="p-2 rounded-lg bg-white/10">
+                      {financial.windowOpen ? <Unlock className="w-4 h-4 text-emerald-300" /> : <Lock className="w-4 h-4 text-amber-300" />}
                     </div>
                   </div>
 
                   <button
                     onClick={() => {
-                      setPassbookTab('Tabungan');
                       setShowPassbookModal(true);
                     }}
                     className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border-none"
@@ -968,7 +952,6 @@ export default function GuardianPortal({
                         setDepositAmount(0);
                         setDepositReceipt('');
                         setDepositNote('');
-                        setDepositAccountType('Tabungan');
                         setShowDepositModal(true);
                       }}
                       className={`w-full py-2.5 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer border-none ${
@@ -1011,9 +994,9 @@ export default function GuardianPortal({
                   <div>
                     <h3 className="font-bold text-emerald-950 text-sm uppercase tracking-tight flex items-center gap-2">
                       <Activity className="w-4 h-4 text-emerald-600" />
-                      Arus Mutasi Rekening
+                      Arus Mutasi Rekening Tabungan
                     </h3>
-                    <p className="text-[10px] text-gray-500 font-bold">Semua aktivitas mutasi dana tabungan & penitipan</p>
+                    <p className="text-[10px] text-gray-500 font-bold">Semua aktivitas mutasi dana tabungan santri</p>
                   </div>
                   
                   <div className="flex flex-wrap gap-2 text-xs">
@@ -1025,16 +1008,6 @@ export default function GuardianPortal({
                       <option value="Semua">Semua Aliran</option>
                       <option value="Setor">Setoran (+)</option>
                       <option value="Tarik">Penarikan (-)</option>
-                    </select>
-
-                    <select
-                      value={filterPos}
-                      onChange={(e) => setFilterPos(e.target.value as any)}
-                      className="p-2 bg-white/80 border border-emerald-100 rounded-xl text-[11px] font-bold text-emerald-950 focus:outline-none focus:border-emerald-600"
-                    >
-                      <option value="Semua">Semua Jenis Akun</option>
-                      <option value="Tabungan">Tabungan</option>
-                      <option value="Penitipan">Penitipan</option>
                     </select>
                   </div>
                 </div>
@@ -1058,9 +1031,7 @@ export default function GuardianPortal({
                             <tr key={tx.id} className="hover:bg-white/30 transition-colors">
                               <td className="p-3 font-mono text-emerald-900/60 text-[10px]">{formatDateDDMMYYYY(tx.date || tx.timestamp)}</td>
                               <td className="p-3">
-                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black border ${
-                                  tx.accountType === 'Tabungan' ? 'bg-teal-50/80 text-teal-850 border-teal-200/50' : 'bg-emerald-50/80 text-emerald-800 border-emerald-200/50'
-                                }`}>
+                                <span className="px-2 py-0.5 rounded-lg text-[9px] font-black border bg-teal-50/80 text-teal-850 border-teal-200/50">
                                   {tx.accountType}
                                 </span>
                               </td>
@@ -1098,7 +1069,7 @@ export default function GuardianPortal({
                   {/* Header */}
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase tracking-widest inline-block">Cetak Buku Santri</span>
+                      <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase tracking-widest inline-block">Cetak Buku Tabungan Santri</span>
                       <h3 className="text-lg font-black text-emerald-950 uppercase tracking-tight">{loggedInStudent.name}</h3>
                       <p className="text-[10px] text-gray-500 font-bold font-mono">NIS: {loggedInStudent.nis} • Kelas: {loggedInStudent.className}</p>
                     </div>
@@ -1110,37 +1081,13 @@ export default function GuardianPortal({
                     </button>
                   </div>
 
-                  {/* Panel Selector (Sliding Tab Layout) */}
-                  <div className="bg-gray-100 p-1 rounded-xl flex relative">
-                    <button
-                      onClick={() => setPassbookTab('Tabungan')}
-                      className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all border-none cursor-pointer ${
-                        passbookTab === 'Tabungan' 
-                          ? 'bg-white text-emerald-950 shadow-sm font-black' 
-                          : 'text-gray-500 hover:text-gray-900 font-bold'
-                      }`}
-                    >
-                      Buku Tabungan
-                    </button>
-                    <button
-                      onClick={() => setPassbookTab('Penitipan')}
-                      className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all border-none cursor-pointer ${
-                        passbookTab === 'Penitipan' 
-                          ? 'bg-white text-emerald-950 shadow-sm font-black' 
-                          : 'text-gray-500 hover:text-gray-900 font-bold'
-                      }`}
-                    >
-                      Buku Penitipan
-                    </button>
-                  </div>
-
-                  {/* Slider Content Panel */}
+                  {/* Content Panel */}
                   <div className="bg-slate-50 p-5 rounded-2xl border border-emerald-100/40 relative overflow-hidden flex flex-col justify-between">
                     <div className="space-y-4 animate-in fade-in duration-200">
                       <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black text-teal-800 uppercase tracking-widest">Akun {passbookTab}</span>
+                        <span className="text-[10px] font-black text-teal-800 uppercase tracking-widest">Saldo Buku Tabungan</span>
                         <span className="text-xs font-black text-teal-950 font-mono bg-teal-100/50 px-2.5 py-1 rounded-lg">
-                          {formatCurrency(passbookTab === 'Tabungan' ? studentBalances.tabungan : studentBalances.penitipan)}
+                          {formatCurrency(studentBalances.tabungan)}
                         </span>
                       </div>
                       
@@ -1158,8 +1105,8 @@ export default function GuardianPortal({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-teal-50 font-bold">
-                            {getMutasiTxs(loggedInStudent.id, passbookTab).length > 0 ? (
-                              getMutasiTxs(loggedInStudent.id, passbookTab).map((tx) => (
+                            {getMutasiTxs(loggedInStudent.id, 'Tabungan').length > 0 ? (
+                              getMutasiTxs(loggedInStudent.id, 'Tabungan').map((tx) => (
                                 <tr key={tx.id} className="hover:bg-teal-50/20">
                                   <td className="px-4 py-2 text-[10px] font-mono text-teal-900">{formatTxId(tx.id, transactions)}</td>
                                   <td className="px-4 py-2 text-[9px] font-mono text-gray-500">{formatDateTimeDDMMYYYY(tx.timestamp)}</td>
@@ -1173,7 +1120,7 @@ export default function GuardianPortal({
                             ) : (
                               <tr>
                                 <td colSpan={7} className="px-4 py-8 text-center text-gray-400 font-bold italic text-[10px]">
-                                  Belum ada riwayat mutasi {(passbookTab || '').toLowerCase()}
+                                  Belum ada riwayat mutasi tabungan
                                 </td>
                               </tr>
                             )}
@@ -1182,11 +1129,11 @@ export default function GuardianPortal({
                       </div>
 
                       <button
-                        onClick={() => printPassbook(loggedInStudent, transactions, institution, passbookTab)}
+                        onClick={() => printPassbook(loggedInStudent, transactions, institution, 'Tabungan')}
                         className="w-full mt-2 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-md shadow-emerald-900/10 flex items-center justify-center gap-2 cursor-pointer border-none"
                       >
                         <Printer className="w-4 h-4" />
-                        Cetak Buku {passbookTab}
+                        Cetak Buku Tabungan
                       </button>
                     </div>
                   </div>
@@ -1360,10 +1307,6 @@ export default function GuardianPortal({
                   <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                   <span>Biaya admin dan layanan aplikasi setiap penarikan uang tabungan sebesar <strong className="text-emerald-700">Rp{(financial.adminFeeTabunganAmount || 5000).toLocaleString('id-ID')}</strong>.</span>
                 </li>
-                <li className="flex gap-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <span>Penitipan uang <strong>free</strong> (tidak ada biaya admin & batas masa penarikan), namun maksimal sebesar <strong className="text-blue-600">Rp{(financial.maxDepositAmount || 500000).toLocaleString('id-ID')}</strong>. Jika lebih, disarankan digabung ke Tabungan.</span>
-                </li>
               </ul>
             </div>
 
@@ -1395,7 +1338,7 @@ export default function GuardianPortal({
             <div className="bg-gradient-to-r from-emerald-800 to-teal-800 px-6 py-4 text-white flex justify-between items-center shrink-0">
               <h3 className="font-black flex items-center gap-2 text-sm uppercase tracking-wider">
                 <PlusCircle className="w-5 h-5 text-emerald-300" />
-                Ajukan Setoran Mandiri
+                Ajukan Setoran Tabungan Mandiri
               </h3>
               <button 
                 onClick={() => setShowDepositModal(false)} 
@@ -1406,35 +1349,6 @@ export default function GuardianPortal({
             </div>
 
             <form onSubmit={handleSubmitDeposit} className="p-6 space-y-4 text-xs font-bold">
-              {/* Account type selection */}
-              <div>
-                <label className="block text-gray-500 font-black mb-1.5 uppercase tracking-wider text-[10px]">Pilih Jenis Akun</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDepositAccountType('Tabungan')}
-                    className={`p-3 rounded-xl border-2 text-center transition font-black ${
-                      depositAccountType === 'Tabungan'
-                        ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900'
-                        : 'border-gray-100 hover:bg-gray-50 text-gray-500'
-                    }`}
-                  >
-                    💰 Tabungan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDepositAccountType('Penitipan')}
-                    className={`p-3 rounded-xl border-2 text-center transition font-black ${
-                      depositAccountType === 'Penitipan'
-                        ? 'border-teal-600 bg-teal-50/50 text-teal-900'
-                        : 'border-gray-100 hover:bg-gray-50 text-gray-500'
-                    }`}
-                  >
-                    💼 Penitipan
-                  </button>
-                </div>
-              </div>
-
               {/* Amount input */}
               <div>
                 <label className="block text-gray-500 font-black mb-1 uppercase tracking-wider text-[10px]">Nominal Penyetoran (Rp)</label>

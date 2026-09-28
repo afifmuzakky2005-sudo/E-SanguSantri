@@ -23,10 +23,10 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
     '3 ALIYAH (A)',
     '3 ALIYAH (B)'
   ],
-  waTemplateRegistration: "*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}",
-  waTemplateTransaction: "*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan* : {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
-  waTemplateAccountData: "*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}",
-  waTemplateBalanceSummary: "*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFROMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*Saldo Penitipan :* {Saldo Penitipan}\n\n*TOTAL SALDO* : {TOTAL SALDO}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
+  waTemplateRegistration: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}",
+  waTemplateTransaction: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan* : {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
+  waTemplateAccountData: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}",
+  waTemplateBalanceSummary: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFORMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*TOTAL SALDO* : {TOTAL SALDO}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
   dorms: [
     'Yunusiyah',
     'Ar Ridho 1',
@@ -43,10 +43,7 @@ export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   windowEndDate: '2026-12-30',
   adminFeeTabunganEnabled: true,
   adminFeeTabunganAmount: 5000, // Rp5.000
-  adminFeePenitipanEnabled: false,
-  adminFeePenitipanAmount: 0,
   savingsBookFeeAmount: 5000, // Rp5.000
-  maxDepositAmount: 500000, // Rp500.000
   qrBalanceCheckEnabled: true, // Active by default
   balanceCheckMethod: 'both',
   allowDeleteWithBalance: false
@@ -113,7 +110,6 @@ export function getLocalStorageData() {
 
   const loadedFin = JSON.parse(localStorage.getItem('esangu_financial') || '{}') as FinancialSettings;
   if (loadedFin.savingsBookFeeAmount === undefined) loadedFin.savingsBookFeeAmount = 5000;
-  if (loadedFin.maxDepositAmount === undefined) loadedFin.maxDepositAmount = 500000;
   if (loadedFin.qrBalanceCheckEnabled === undefined) loadedFin.qrBalanceCheckEnabled = true;
   if (loadedFin.allowDeleteWithBalance === undefined) loadedFin.allowDeleteWithBalance = false;
   localStorage.setItem('esangu_financial', JSON.stringify(loadedFin));
@@ -151,7 +147,7 @@ export function getLocalStorageData() {
 
   return {
     santri: JSON.parse(localStorage.getItem('esangu_santri') || '[]') as Santri[],
-    transactions: JSON.parse(localStorage.getItem('esangu_transactions') || '[]') as Transaction[],
+    transactions: (JSON.parse(localStorage.getItem('esangu_transactions') || '[]') as Transaction[]).map(t => ({ ...t, accountType: 'Tabungan' as const })),
     institution: loadedInst,
     financial: loadedFin,
     users: loadedUsers,
@@ -180,32 +176,24 @@ export function saveLocalStorageData(data: {
   if (data.activityLogs) localStorage.setItem('esangu_activityLogs', JSON.stringify(data.activityLogs));
 }
 
-// Calculate total balances
+// Calculate total balances (Only Tabungan)
 export function calculateBalances(santriId: string, transactions: Transaction[]) {
   const sTxs = transactions.filter(t => t.santriId === santriId);
   
   let tabunganBalance = 0;
-  let penitipanBalance = 0;
 
   sTxs.forEach(t => {
-    if (t.accountType === 'Tabungan') {
-      if (t.type === 'Setor') {
-        tabunganBalance += t.amount;
-      } else {
-        tabunganBalance -= t.amount; // total decrease in account is exactly the requested amount
-      }
+    if (t.type === 'Setor') {
+      tabunganBalance += t.amount;
     } else {
-      if (t.type === 'Setor') {
-        penitipanBalance += t.amount;
-      } else {
-        penitipanBalance -= t.amount;
-      }
+      tabunganBalance -= t.amount; // total decrease in account is exactly the requested amount
     }
   });
 
+  const finalBal = Math.max(0, tabunganBalance);
+
   return {
-    tabungan: Math.max(0, tabunganBalance),
-    penitipan: Math.max(0, penitipanBalance),
-    total: Math.max(0, tabunganBalance) + Math.max(0, penitipanBalance)
+    tabungan: finalBal,
+    total: finalBal
   };
 }

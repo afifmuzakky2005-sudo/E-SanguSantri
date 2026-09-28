@@ -149,7 +149,7 @@ export async function updateAppFavicon(logoUrl?: string, institutionName?: strin
           id: '/',
           name: appTitle,
           short_name: 'E-SanguSantri',
-          description: 'Aplikasi Manajemen Tabungan Santri & Penitipan Uang Saku Pesantren.',
+          description: 'Aplikasi Manajemen Tabungan Santri Pesantren.',
           theme_color: '#047857',
           background_color: '#047857',
           display: 'standalone',

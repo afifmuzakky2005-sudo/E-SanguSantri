@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { ActivityLog } from '../types';
+import { ActivityLog } from '../../types';
 import { Search, Download, Filter, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY, formatTimeHHMM } from '../lib/dateUtils';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY, formatTimeHHMM } from '../../lib/dateUtils';
 
 interface ActivityLogViewProps {
   activityLogs: ActivityLog[];

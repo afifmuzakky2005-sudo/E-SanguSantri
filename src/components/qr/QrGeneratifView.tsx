@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Santri, Transaction, InstitutionSettings, FinancialSettings } from '../types';
-import { calculateBalances } from '../data/mockData';
-import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
+import { Santri, Transaction, InstitutionSettings, FinancialSettings } from '../../types';
+import { calculateBalances } from '../../data/mockData';
+import { playSuccessSound, playErrorSound } from '../../lib/soundHelper';
 import QRCode from 'qrcode';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
@@ -42,7 +42,7 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
     success: boolean;
     message: string;
     student?: Santri;
-    balances?: { tabungan: number; penitipan: number; total: number };
+    balances?: { tabungan: number; total: number };
   } | null>(null);
   const [isScanningSim, setIsScanningSim] = useState(false);
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
@@ -693,18 +693,10 @@ export const QrGeneratifView: React.FC<QrGeneratifViewProps> = ({
                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Asrama: {testQrResult.student.dorm || '-'}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5 pt-1.5 text-left">
-                      <div className="bg-slate-50 border border-slate-200 p-2 rounded-lg">
-                        <span className="block text-[8px] text-teal-600 font-black uppercase tracking-widest">Saldo Tabungan</span>
-                        <span className="text-[11px] font-black font-mono text-slate-800">{formatCurrency(testQrResult.balances.tabungan)}</span>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-200 p-2 rounded-lg">
-                        <span className="block text-[8px] text-emerald-600 font-black uppercase tracking-widest">Saldo Penitipan</span>
-                        <span className="text-[11px] font-black font-mono text-slate-800">{formatCurrency(testQrResult.balances.penitipan)}</span>
-                      </div>
-                      <div className="col-span-2 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border border-slate-200 p-2.5 rounded-lg flex justify-between items-center">
-                        <span className="text-[9px] text-emerald-700 font-black uppercase tracking-widest">Total Saldo Aktif</span>
-                        <span className="text-sm font-black font-mono text-emerald-800">{formatCurrency(testQrResult.balances.total)}</span>
+                    <div className="pt-1.5 text-left">
+                      <div className="bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border border-slate-200 p-2.5 rounded-lg flex justify-between items-center">
+                        <span className="text-[9px] text-emerald-700 font-black uppercase tracking-widest">Saldo Tabungan</span>
+                        <span className="text-sm font-black font-mono text-emerald-800">{formatCurrency(testQrResult.balances.tabungan)}</span>
                       </div>
                     </div>
                   </>

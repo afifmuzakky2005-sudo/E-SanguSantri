@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Santri, Transaction, InstitutionSettings, FinancialSettings, User, PendingRegistration } from '../types';
-import { calculateBalances } from '../data/mockData';
+import { Santri, Transaction, InstitutionSettings, FinancialSettings, User, PendingRegistration } from '../../types';
+import { calculateBalances } from '../../data/mockData';
 import { TransactionTrendChart, AllocationPieChart } from './VisualCharts';
 import StudentManagement from './StudentManagement';
 import SavingsManagement from './SavingsManagement';
 import MutasiKas from './MutasiKas';
-import ErrorBoundary from './ErrorBoundary';
+import ErrorBoundary from '../common/ErrorBoundary';
 import Transactions from './Transactions';
 import DatabaseBackup from './DatabaseBackup';
 import Settings from './Settings';
@@ -13,12 +13,12 @@ import UserManagement from './UserManagement';
 import RegistrationManagement from './RegistrationManagement';
 import StudentImport from './StudentImport';
 import ActivityLogView from './ActivityLogView';
-import { QrGeneratifView } from './QrGeneratifView';
+import { QrGeneratifView } from '../qr/QrGeneratifView';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { formatDateDDMMYYYY } from '../lib/dateUtils';
+import { formatDateDDMMYYYY } from '../../lib/dateUtils';
 import { FileDown, FileText,
   LayoutDashboard,
   Users,
@@ -54,6 +54,7 @@ interface AdminPanelProps {
   activityLogs: any[];
   currentUser: User;
   onLogout: () => void;
+  initialTab?: string;
   // State update handlers
   onAddStudent: (s: Omit<Santri, 'id'>) => void;
   onAddStudents?: (s: Omit<Santri, 'id'>[]) => void;
@@ -79,6 +80,7 @@ interface AdminPanelProps {
   onDeactivateSavings: (id: string) => void;
   onBulkDeactivateSavings?: (ids: string[]) => void;
   onBulkActivateSavings?: (ids: string[]) => void;
+  onUpdateTransaction?: (tx: Transaction) => void;
 }
 
 export default function AdminPanel({
@@ -114,19 +116,27 @@ export default function AdminPanel({
   onActivateSavings,
   onDeactivateSavings,
   onBulkDeactivateSavings,
-  onBulkActivateSavings
+  onBulkActivateSavings,
+  onUpdateTransaction,
+  initialTab
 }: AdminPanelProps) {
   const [activeMenu, setActiveMenu] = useState<'dashboard' | 'datamaster' | 'datatabungan' | 'pendaftaran' | 'pengajuan' | 'transaksi' | 'riwayat' | 'laporan' | 'impor_santri' | 'backup' | 'log_aktifitas' | 'pengaturan' | 'akun_pengguna' | 'qrgeneratif'>('dashboard');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveMenu(initialTab as any);
+    }
+  }, [initialTab]);
   const [prefilledTransaction, setPrefilledTransaction] = useState<{
     santriId: string;
-    accountType: 'Tabungan' | 'Penitipan';
+    accountType: 'Tabungan';
     amount: number;
     type: 'Setor' | 'Tarik';
     paymentMethod: 'Tunai' | 'Transfer';
     transferReceiptUrl: string;
     registrationId: string;
   } | null>(null);
-  const [subReportTab, setSubReportTab] = useState<'tabungan' | 'penitipan' | 'admin'>('tabungan');
+  const [subReportTab, setSubReportTab] = useState<'tabungan' | 'admin'>('tabungan');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -157,7 +167,7 @@ export default function AdminPanel({
     }
   }, [currentUser.role, activeMenu]);
 
-  const exportReportExcel = (type: 'tabungan' | 'penitipan' | 'admin') => {
+  const exportReportExcel = (type: 'tabungan' | 'admin') => {
     let wsData: any[] = [];
     let filename = '';
 
@@ -181,26 +191,6 @@ export default function AdminPanel({
           'Tabungan Aktif'
         ]);
       });
-    } else if (type === 'penitipan') {
-      filename = 'Laporan_Akumulasi_Penitipan';
-      wsData.push(['LAPORAN AKUMULASI PENITIPAN OPERASIONAL']);
-      wsData.push([institution.name]);
-      wsData.push([`Tanggal Unduh: ${formatDateDDMMYYYY(new Date())}`]);
-      wsData.push([]);
-      wsData.push(['No', 'NIS', 'Nama Santri', 'Kelas', 'Kamar / Asrama', 'Saldo Titipan', 'Status Rekening']);
-      
-      students.forEach((s, idx) => {
-        const bal = calculateBalances(s.id, transactions);
-        wsData.push([
-          idx + 1,
-          s.nis,
-          s.name,
-          s.className,
-          s.dorm,
-          bal.penitipan,
-          'Operasional Aktif'
-        ]);
-      });
     } else if (type === 'admin') {
       filename = 'Rekap_Pendapatan_Admin_Fee';
       wsData.push(['REKAP LAPORAN PENDAPATAN BIAYA ADMINISTRASI']);
@@ -216,7 +206,7 @@ export default function AdminPanel({
           formatDateDDMMYYYY(t.date || t.timestamp),
           t.santriName,
           t.santriClass,
-          t.accountType,
+          'Tabungan',
           t.adminFee || 0,
           t.cashierName
         ]);
@@ -232,7 +222,7 @@ export default function AdminPanel({
     saveAs(blob, `${filename}.xlsx`);
   };
 
-  const exportReportPDF = (type: 'tabungan' | 'penitipan' | 'admin') => {
+  const exportReportPDF = (type: 'tabungan' | 'admin') => {
     try {
       const doc = new jsPDF('p', 'pt', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -273,41 +263,13 @@ export default function AdminPanel({
             5: { halign: 'right', fontStyle: 'bold', textColor: [4, 120, 87] }
           }
         });
-      } else if (type === 'penitipan') {
-        title = 'LAPORAN AKUMULASI PENITIPAN OPERASIONAL';
-        filename = 'Laporan_Penitipan_Operasional.pdf';
-        head = [['No', 'NIS', 'Nama Santri', 'Kelas', 'Asrama', 'Saldo Penitipan']];
-        body = students.map((s, idx) => {
-          const bal = calculateBalances(s.id, transactions);
-          return [idx + 1, s.nis, s.name, s.className, s.dorm, formatCurrency(bal.penitipan)];
-        });
-
-        doc.text(title, pageWidth / 2, 40, { align: 'center' });
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(institution.name, pageWidth / 2, 55, { align: 'center' });
-        
-        doc.text(`Total Penitipan: ${formatCurrency(totalPenitipan)}`, 40, 80);
-        doc.text(`Rata-rata: ${formatCurrency(activeStudentsCount > 0 ? (totalPenitipan / activeStudentsCount) : 0)}`, 40, 95);
-        
-        autoTable(doc, {
-          startY: 110,
-          head: head,
-          body: body,
-          theme: 'grid',
-          headStyles: { fillColor: [6, 95, 70] },
-          styles: { fontSize: 8, cellPadding: 4 },
-          columnStyles: {
-            5: { halign: 'right', fontStyle: 'bold', textColor: [4, 120, 87] }
-          }
-        });
       } else if (type === 'admin') {
         title = 'REKAP LAPORAN PENDAPATAN BIAYA ADMINISTRASI';
         filename = 'Rekap_Pendapatan_Admin_Fee.pdf';
         head = [['ID Transaksi', 'Tanggal', 'Santri (Kelas)', 'Jenis Akun', 'Biaya Admin', 'Kasir']];
         const adminTx = transactions.filter(t => (t.adminFee || 0) > 0);
         body = adminTx.map((t, idx) => {
-          return [`TX${String(idx + 1).padStart(7, '0')}`, formatDateDDMMYYYY(t.date || t.timestamp), `${t.santriName} (${t.santriClass})`, t.accountType, formatCurrency(t.adminFee), t.cashierName];
+          return [`TX${String(idx + 1).padStart(7, '0')}`, formatDateDDMMYYYY(t.date || t.timestamp), `${t.santriName} (${t.santriClass})`, 'Tabungan', formatCurrency(t.adminFee), t.cashierName];
         });
 
         doc.text(title, pageWidth / 2, 40, { align: 'center' });
@@ -342,17 +304,15 @@ export default function AdminPanel({
 
   // Calculators
   let totalTabungan = 0;
-  let totalPenitipan = 0;
   let totalSetorToday = 0;
   let totalTarikToday = 0;
 
   students.forEach(s => {
     const bal = calculateBalances(s.id, transactions);
     totalTabungan += bal.tabungan;
-    totalPenitipan += bal.penitipan;
   });
 
-  const grandTotal = totalTabungan + totalPenitipan;
+  const grandTotal = totalTabungan;
 
   // Transactions Today
   const todayStr = new Date().toISOString().split('T')[0];
@@ -712,45 +672,35 @@ export default function AdminPanel({
               </div>
 
             {/* Metrik Utama Row - Improved */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               
               <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 p-6 rounded-[24px] shadow-xl shadow-emerald-900/20 text-white relative overflow-hidden group">
                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
-                <span className="text-[10px] text-emerald-300 font-black tracking-tighter block opacity-80">Total Saldo</span>
-                <div className="text-2xl font-black mt-2 tracking-tighter">{formatCurrency(grandTotal)}</div>
+                <span className="text-[10px] text-emerald-300 font-black tracking-tighter block opacity-80">Total Saldo Tabungan</span>
+                <div className="text-2xl font-black mt-2 tracking-tighter">{formatCurrency(totalTabungan)}</div>
                 <div className="flex items-center gap-2 mt-4">
-                  <div className="px-2 py-0.5 bg-emerald-400/20 rounded text-[9px] font-bold text-emerald-300 border border-emerald-400/20">GLOBAL BALANCE</div>
+                  <div className="px-2 py-0.5 bg-emerald-400/20 rounded text-[9px] font-bold text-emerald-300 border border-emerald-400/20">SALDO AKTIF</div>
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-[24px] border border-emerald-100 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[10px] text-gray-400 font-black tracking-tighter block">Tabungan</span>
-                  <div className="text-xl font-black text-teal-900 mt-2">{formatCurrency(totalTabungan)}</div>
+                  <span className="text-[10px] text-gray-400 font-black tracking-tighter block">Santri Memiliki Buku Tabungan</span>
+                  <div className="text-xl font-black text-teal-900 mt-2">{activeStudentsCount} Santri</div>
                 </div>
                 <div className="w-full h-1 bg-teal-100 rounded-full mt-4 overflow-hidden">
-                  <div className="h-full bg-teal-500" style={{ width: '65%' }}></div>
+                  <div className="h-full bg-teal-500" style={{ width: `${students.length > 0 ? (activeStudentsCount / students.length) * 100 : 0}%` }}></div>
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-[24px] border border-emerald-100 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[10px] text-gray-400 font-black tracking-tighter block">Penitipan</span>
-                  <div className="text-xl font-black text-emerald-700 mt-2">{formatCurrency(totalPenitipan)}</div>
-                </div>
-                <div className="w-full h-1 bg-emerald-100 rounded-full mt-4 overflow-hidden">
-                  <div className="h-full bg-emerald-500" style={{ width: '45%' }}></div>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-[24px] border border-emerald-100 shadow-sm flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] text-gray-400 font-black tracking-tighter block">Santri Terdaftar</span>
+                  <span className="text-[10px] text-gray-400 font-black tracking-tighter block">Total Santri Terdaftar</span>
                   <div className="text-xl font-black text-amber-900 mt-2">{students.length} Santri</div>
                 </div>
                 <div className="flex items-center gap-1.5 mt-4 text-[10px] font-bold text-emerald-600">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                  {activeStudentsCount} Aktif
+                  {students.filter(s => s.status === 'Aktif').length} Status Aktif
                 </div>
               </div>
 
@@ -794,7 +744,7 @@ export default function AdminPanel({
               {/* Pie Allocation Chart */}
               <div className="bg-white p-6 rounded-[24px] border border-emerald-100 shadow-sm space-y-4">
                 <span className="font-black text-emerald-950 text-sm tracking-tight block">Alokasi Simpanan</span>
-                <AllocationPieChart tabunganTotal={totalTabungan} penitipanTotal={totalPenitipan} />
+                <AllocationPieChart tabunganTotal={totalTabungan} />
               </div>
 
             </div>
@@ -893,6 +843,7 @@ export default function AdminPanel({
             onDeleteRegistration={onDeleteRegistration}
             currentUserRole={currentUser?.role}
             onDeleteTransaction={onDeleteTransaction}
+            onUpdateTransaction={onUpdateTransaction}
           />
         )}
 
@@ -941,6 +892,7 @@ export default function AdminPanel({
               cashierName={currentUser?.name || 'Petugas'}
               currentUserRole={currentUser?.role}
               onDeleteTransaction={onDeleteTransaction}
+              onUpdateTransaction={onUpdateTransaction}
               onAddTransactions={onAddTransactions}
             />
           </ErrorBoundary>
@@ -955,7 +907,7 @@ export default function AdminPanel({
                   <TrendingUp className="w-6 h-6 text-emerald-600" />
                   LAPORAN & PEMBUKUAN
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">Cetak rekapitulasi data tabungan atau penitipan santri.</p>
+                <p className="text-xs text-gray-500 mt-1">Cetak rekapitulasi data tabungan santri dan administrasi.</p>
               </div>
             </div>
             <div className="flex border-b border-gray-200 bg-white p-1.5 rounded-2xl border border-emerald-100 shadow-sm">
@@ -965,15 +917,7 @@ export default function AdminPanel({
                   subReportTab === 'tabungan' ? 'bg-emerald-800 text-white shadow-lg' : 'text-gray-500 hover:text-emerald-700'
                 }`}
               >
-                Tabungan
-              </button>
-              <button
-                onClick={() => setSubReportTab('penitipan')}
-                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition ${
-                  subReportTab === 'penitipan' ? 'bg-emerald-800 text-white shadow-lg' : 'text-gray-500 hover:text-emerald-700'
-                }`}
-              >
-                Penitipan
+                Laporan Tabungan Santri
               </button>
               <button
                 onClick={() => setSubReportTab('admin')}
@@ -981,7 +925,7 @@ export default function AdminPanel({
                   subReportTab === 'admin' ? 'bg-emerald-800 text-white shadow-lg' : 'text-gray-500 hover:text-emerald-700'
                 }`}
               >
-                Rekap Admin Fee
+                Rekap Biaya Admin
               </button>
             </div>
 
@@ -991,7 +935,7 @@ export default function AdminPanel({
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-100 pb-3 gap-3">
                   <div>
                     <h3 className="font-bold text-gray-800 text-sm">Laporan Akumulasi Tabungan</h3>
-                    <p className="text-[10px] text-gray-400">Total dana simpanan wajib santri berdasarkan kelas.</p>
+                    <p className="text-[10px] text-gray-400">Total dana simpanan santri berdasarkan kelas.</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -1063,85 +1007,7 @@ export default function AdminPanel({
               </div>
             )}
 
-            {/* TAB 2: LAPORAN PENITIPAN */}
-            {subReportTab === 'penitipan' && (
-              <div className="bg-white p-5 rounded-xl border border-emerald-100 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-100 pb-3 gap-3">
-                  <div>
-                    <h3 className="font-bold text-gray-800 text-sm">Laporan Akumulasi Penitipan</h3>
-                    <p className="text-[10px] text-gray-400">Arus sisa saldo operasional harian yang dapat diambil sewaktu-waktu.</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => exportReportExcel('penitipan')}
-                      className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <FileDown className="w-4 h-4" />
-                      Excel
-                    </button>
-                    <button
-                      onClick={() => exportReportPDF('penitipan')}
-                      className="px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg hover:bg-rose-100 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Cetak / PDF
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                    <span className="text-gray-500 block">Total Penitipan</span>
-                    <span className="text-lg font-bold text-emerald-950 block mt-1">{formatCurrency(totalPenitipan)}</span>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <span className="text-gray-500 block">Rata-rata Uang Saku Per Anak</span>
-                    <span className="text-lg font-bold text-gray-800 block mt-1">{formatCurrency(activeStudentsCount > 0 ? (totalPenitipan / activeStudentsCount) : 0)}</span>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <span className="text-gray-500 block">Aturan Tarik Harian</span>
-                    <span className="text-xs font-bold block text-emerald-700 mt-2">
-                      BEBAS / KAPAN SAJA (KASIR BUKA)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Ledger overview per student */}
-                <div className="border border-gray-100 rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 font-bold">
-                        <th className="p-3">Nama Santri (NIS)</th>
-                        <th className="p-3">Kelas</th>
-                        <th className="p-3">Kamar / Asrama</th>
-                        <th className="p-3 text-right">Saldo Titipan Operasional</th>
-                        <th className="p-3 text-center">Status Rekening</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {students.map(s => {
-                        const bal = calculateBalances(s.id, transactions);
-                        return (
-                          <tr key={s.id} className="hover:bg-slate-50/50">
-                            <td className="p-3 font-semibold text-gray-800">{s.name} <span className="text-[10px] block font-mono font-normal text-gray-400">NIS: {s.nis}</span></td>
-                            <td className="p-3 text-gray-600">{s.className}</td>
-                            <td className="p-3 text-gray-500">{s.dorm}</td>
-                            <td className="p-3 text-right font-bold text-emerald-800">{formatCurrency(bal.penitipan)}</td>
-                            <td className="p-3 text-center">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                Operasional Aktif
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: REKAP PENDAPATAN ADMIN */}
+            {/* TAB 2: REKAP PENDAPATAN ADMIN */}
             {subReportTab === 'admin' && (
               <div className="bg-white p-5 rounded-xl border border-emerald-100 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-100 pb-3 gap-3">
@@ -1177,10 +1043,6 @@ export default function AdminPanel({
                     <span className="text-gray-500 block">Tarif Admin Tabungan</span>
                     <span className="text-base font-bold text-gray-800 block mt-1">
                       {financial.adminFeeTabunganEnabled ? `${formatCurrency(financial.adminFeeTabunganAmount)} / Penarikan` : 'Tidak Aktif (Gratis)'}
-                    </span>
-                    <span className="text-gray-500 block mt-2">Tarif Admin Penitipan</span>
-                    <span className="text-base font-bold text-gray-800 block mt-1">
-                      {financial.adminFeePenitipanEnabled ? `${formatCurrency(financial.adminFeePenitipanAmount)} / Penarikan` : 'Tidak Aktif (Gratis)'}
                     </span>
                   </div>
                 </div>

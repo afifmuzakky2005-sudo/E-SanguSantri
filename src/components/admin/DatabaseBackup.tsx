@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Database, Download, Upload, ShieldCheck, Zap, RefreshCw, AlertTriangle, FileJson, FileSpreadsheet, FileText, Save } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Santri, Transaction, InstitutionSettings, FinancialSettings, User } from '../types';
-import { calculateBalances } from '../data/mockData';
-import { formatDateDDMMYYYY, formatTimeHHMM } from '../lib/dateUtils';
+import { Santri, Transaction, InstitutionSettings, FinancialSettings, User } from '../../types';
+import { calculateBalances } from '../../data/mockData';
+import { formatDateDDMMYYYY, formatTimeHHMM } from '../../lib/dateUtils';
 
 interface DatabaseBackupProps {
   students: Santri[];
@@ -168,7 +168,7 @@ export default function DatabaseBackup({
       }
 
       // Save to Firebase securely and refresh
-      const { saveFirebaseData } = await import('../lib/firebaseStore');
+      const { saveFirebaseData } = await import('../../lib/firebaseStore');
       await saveFirebaseData(firebaseStateToSave);
 
       onRestoreData(parsed);
@@ -237,9 +237,7 @@ export default function DatabaseBackup({
           'No. WhatsApp Wali': s.guardianPhone || '-',
           'Status Santri': s.status,
           'Status Tabungan': s.hasSavings ? 'Aktif' : 'Tutup',
-          'Saldo Tabungan': bal.tabungan,
-          'Saldo Penitipan': bal.penitipan,
-          'Total Saldo': bal.total
+          'Saldo Tabungan': bal.tabungan
         };
       });
 
@@ -266,14 +264,11 @@ export default function DatabaseBackup({
 
       // 3. Sheet Ringkasan Laporan
       const totalSavings = students.reduce((sum, s) => sum + (s.hasSavings ? calculateBalances(s.id, transactions).tabungan : 0), 0);
-      const totalPenitipan = students.reduce((sum, s) => sum + (s.hasSavings ? calculateBalances(s.id, transactions).penitipan : 0), 0);
       const summaryData = [
         { 'Kategori': 'Nama Lembaga', 'Nilai': institution.name },
         { 'Kategori': 'Total Santri Terdaftar', 'Nilai': students.length },
         { 'Kategori': 'Akun Tabungan Aktif', 'Nilai': students.filter(s => s.hasSavings).length },
         { 'Kategori': 'Total Saldo Tabungan', 'Nilai': totalSavings },
-        { 'Kategori': 'Total Saldo Penitipan', 'Nilai': totalPenitipan },
-        { 'Kategori': 'Total Seluruh Saldo Sangu', 'Nilai': totalSavings + totalPenitipan },
         { 'Kategori': 'Batas Maksimum Tarikan Per Tahun', 'Nilai': financial.maxWithdrawalsPerYear || 0 }
       ];
 
@@ -297,7 +292,6 @@ export default function DatabaseBackup({
   const handleDownloadPDF = () => {
     try {
       const totalSavings = students.reduce((sum, s) => sum + (s.hasSavings ? calculateBalances(s.id, transactions).tabungan : 0), 0);
-      const totalPenitipan = students.reduce((sum, s) => sum + (s.hasSavings ? calculateBalances(s.id, transactions).penitipan : 0), 0);
       const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
       };
@@ -316,9 +310,7 @@ export default function DatabaseBackup({
             <td style="padding: 8px;"><b>${s.name}</b></td>
             <td style="padding: 8px;">${s.className}</td>
             <td style="padding: 8px;">${s.dorm || '-'}</td>
-            <td style="padding: 8px; text-align: right;">${formatCurrency(bal.tabungan)}</td>
-            <td style="padding: 8px; text-align: right;">${formatCurrency(bal.penitipan)}</td>
-            <td style="padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(bal.total)}</td>
+            <td style="padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(bal.tabungan)}</td>
           </tr>
         `;
       }).join('');
@@ -348,7 +340,7 @@ export default function DatabaseBackup({
               table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
               th { background-color: #f1f5f9; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
               .header { text-align: center; border-bottom: 3px double #333; padding-bottom: 20px; margin-bottom: 30px; }
-              .grid { display: grid; grid-template-cols: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+              .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
               .card { border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; background-color: #f8fafc; }
               .card h3 { font-size: 12px; color: #64748b; margin-bottom: 10px; }
               .card p { font-size: 18px; font-weight: bold; margin: 0; color: #0f172a; }
@@ -375,10 +367,6 @@ export default function DatabaseBackup({
                 <p>\${formatCurrency(totalSavings)}</p>
               </div>
               <div class="card">
-                <h3>TOTAL SALDO PENITIPAN SANTRI</h3>
-                <p>\${formatCurrency(totalPenitipan)}</p>
-              </div>
-              <div class="card">
                 <h3>TOTAL SANTRI TERDAFTAR</h3>
                 <p>\${students.length} Santri</p>
               </div>
@@ -397,8 +385,6 @@ export default function DatabaseBackup({
                   <th>Kelas</th>
                   <th>Asrama</th>
                   <th style="text-align: right;">Saldo Tabungan</th>
-                  <th style="text-align: right;">Saldo Penitipan</th>
-                  <th style="text-align: right;">Total Saldo</th>
                 </tr>
               </thead>
               <tbody>

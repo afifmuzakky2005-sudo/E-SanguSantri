@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScanLine, ShieldAlert, CheckCircle2, Radio } from 'lucide-react';
-import { playSuccessSound, playErrorSound } from '../lib/soundHelper';
+import { playSuccessSound, playErrorSound } from '../../lib/soundHelper';
 
 interface PhysicalQrScannerProps {
   onScanSuccess: (decodedText: string) => void;

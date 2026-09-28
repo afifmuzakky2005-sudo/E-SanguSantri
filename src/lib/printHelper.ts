@@ -77,7 +77,7 @@ export function parseWaTransactionTemplate(
   
   const buktiText = transaction.type === 'Setor' ? 'BUKTI SETOR DANA' : 'BUKTI PENARIKAN DANA';
 
-  const baseTemplate = template || `*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan :* {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
+  const baseTemplate = template || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan :* {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
 
   return baseTemplate
     .replace(/{NAMA PONDOK}/g, institution?.name || '')
@@ -454,12 +454,12 @@ export const printReceipt = (transaction: Transaction, santri: Santri, instituti
   printWindow.document.close();
 };
 
-export const printPassbook = (santri: Santri, transactions: Transaction[], institution: InstitutionSettings, accountType: 'Tabungan' | 'Penitipan') => {
+export const printPassbook = (santri: Santri, transactions: Transaction[], institution: InstitutionSettings, accountType: 'Tabungan' = 'Tabungan') => {
   const printWindow = window.open('about:blank', '_blank');
   if (!printWindow) return;
 
   const filteredTransactions = transactions
-    .filter(tx => tx.santriId === santri.id && tx.accountType === accountType)
+    .filter(tx => tx.santriId === santri.id)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   let balance = 0;

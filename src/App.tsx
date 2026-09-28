@@ -1,14 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { getFirebaseData, saveFirebaseData, deleteFirebaseDocument, cleanUndefined } from './lib/firebaseStore';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { getFirebaseData, saveFirebaseData, deleteFirebaseDocument, cleanUndefined } from './services/firebaseStore';
 import { getLocalStorageData, DEFAULT_INSTITUTION_SETTINGS, DEFAULT_FINANCIAL_SETTINGS, DEFAULT_USERS } from './data/mockData';
 import { Santri, Transaction, InstitutionSettings, FinancialSettings, User, PendingRegistration } from './types';
-import GuardianPortal from './components/GuardianPortal';
-import AdminPanel from './components/AdminPanel';
-import ErrorBoundary from './components/ErrorBoundary';
-import Login from './components/Login';
-import { ShieldAlert, X, Eye, EyeOff } from 'lucide-react';
 import { updateAppFavicon } from './lib/faviconHelper';
-import { OfflineIndicator } from './components/OfflineIndicator';
+import { ShieldAlert } from 'lucide-react';
+
+// UI & Common Components
+import { ErrorBoundary, OfflineIndicator } from './components';
+import Login from './components/auth/Login';
+
+// Pages according to folder structure (pages/public, pages/auth, pages/admin)
+import PortalPage from './pages/public/PortalPage';
+import ManualCheckPage from './pages/public/ManualCheckPage';
+import SantriDetailPage from './pages/public/SantriDetailPage';
+
+import LoginPage from './pages/auth/LoginPage';
+
+import DashboardPage from './pages/admin/DashboardPage';
+import StudentsPage from './pages/admin/StudentsPage';
+import UsersPage from './pages/admin/UsersPage';
+import TransactionsPage from './pages/admin/TransactionsPage';
+import MutasiPage from './pages/admin/MutasiPage';
+import SavingsPage from './pages/admin/SavingsPage';
+import RegistrationsPage from './pages/admin/RegistrationsPage';
+import ImportPage from './pages/admin/ImportPage';
+import QrPage from './pages/admin/QrPage';
+import BackupPage from './pages/admin/BackupPage';
+import LogsPage from './pages/admin/LogsPage';
+import SettingsPage from './pages/admin/SettingsPage';
 
 export default function App() {
   // Core application states
@@ -21,10 +41,6 @@ export default function App() {
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Navigation states
-  // 'portal' = Wali Santri Portal homepage (Cek Keuangan Santri)
-  // 'admin' = Full Admin/Cashier Back-office
-  const [currentView, setCurrentView] = useState<'portal' | 'admin'>('portal');
   const [globalAlert, setGlobalAlert] = useState<string | null>(null);
 
   // Override native browser alert globally
@@ -36,16 +52,12 @@ export default function App() {
   
   // Admin authentication modal/screen state
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
-  const [adminUsername, setAdminUsername] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loggedInAdmin, setLoggedInAdmin] = useState<User | null>(null);
 
   // Load database on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Force clear any old local storage mock data if present
         if (typeof window !== 'undefined') {
           const lsS = localStorage.getItem('esangu_santri');
           if (lsS && (lsS.includes('"s1"') || lsS.includes('"s2"') || lsS.includes('"s3"'))) {
@@ -58,7 +70,6 @@ export default function App() {
 
         const db = await getFirebaseData();
         
-        // Filter out any mock IDs just in case they persist in local browser state
         const cleanSantri = (db.santri || []).filter(s => s && s.id && !['s1', 's2', 's3', 's4', 's5'].includes(s.id));
         const cleanTxs = (db.transactions || []).filter(t => t && t.id && !['tx1', 'tx2', 'tx3', 'tx4', 'tx5', 'tx6', 'tx7', 'tx8', 'tx9', 'tx10', 'tx11', 'tx12', 'tx13', 'tx14', 'tx15', 'tx16', 'tx17', 'tx18'].includes(t.id));
 
@@ -72,7 +83,6 @@ export default function App() {
           id: u.id || `u_${u.username || 'user'}_${idx}`
         }));
         
-        // Deduplicate users by username
         const uniqueUserMap = new Map<string, User>();
         loadedUsers.forEach(u => {
           if (u && u.username) {
@@ -146,7 +156,7 @@ export default function App() {
     loadData();
   }, []);
 
-  // Synchronize browser tab title, favicon, and PWA manifest dynamically
+  // Synchronize browser tab title and favicon
   useEffect(() => {
     const instName = institution?.name?.trim();
     document.title = instName ? `E-SanguSantri - ${instName}` : 'E-SanguSantri';
@@ -167,7 +177,6 @@ export default function App() {
     saveFirebaseData({ activityLogs: updated });
   };
 
-  // Sync state helpers to Firebase
   const handleAddStudent = (newS: Omit<Santri, 'id'>) => {
     const nextStudent: Santri = {
       ...newS,
@@ -197,8 +206,6 @@ export default function App() {
     if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Impor Santri', `Menambahkan ${nextStudents.length} santri baru dari Excel`);
   };
 
-
-
   const handleDeactivateSavings = (id: string) => {
     const updatedStudent = students.find(s => s.id === id);
     if (!updatedStudent) return;
@@ -226,7 +233,6 @@ export default function App() {
     setStudents(updated);
     saveFirebaseData({ santri: [editedS] });
 
-    // Sync any existing transactions with edited student details (name and class)
     const updatedTxs = transactions.map(t => {
       if (t.santriId === editedS.id) {
         return {
@@ -239,7 +245,6 @@ export default function App() {
     });
     setTransactions(updatedTxs);
 
-    // Save updated transactions to Firebase
     const changedTxs = updatedTxs.filter(t => t.santriId === editedS.id);
     if (changedTxs.length > 0) {
       saveFirebaseData({ transactions: changedTxs });
@@ -252,7 +257,6 @@ export default function App() {
     const deletedS = students.find(s => s.id === id);
     const updatedS = students.filter(s => s.id !== id);
     
-    // delete related transactions
     const txsToDelete = transactions.filter(t => t.santriId === id);
     const updatedT = transactions.filter(t => t.santriId !== id);
     
@@ -310,7 +314,6 @@ export default function App() {
     setTransactions(prev => [nextTx, ...prev]);
     saveFirebaseData({ transactions: [nextTx] });
 
-    // Sync student status: ensure student is marked as having active savings upon transaction addition
     setStudents(prev => {
       const student = prev.find(s => s.id === newTx.santriId);
       if (student && (!student.hasSavings || !student.savingsActive)) {
@@ -339,7 +342,6 @@ export default function App() {
     setTransactions(prev => [...nextTxs, ...prev]);
     saveFirebaseData({ transactions: nextTxs });
 
-    // Sync students: mark any student involved as having active savings
     const santriIds = Array.from(new Set(newTxs.map(t => t.santriId)));
     setStudents(prev => {
       const toUpdate: Santri[] = [];
@@ -368,15 +370,22 @@ export default function App() {
 
     const updatedTxs = transactions.filter(t => t.id !== txId);
     setTransactions(updatedTxs);
-    
-    // Cache inside localStorage
     localStorage.setItem('esangu_transactions', JSON.stringify(updatedTxs));
-
-    // Delete in Firebase Firestore
     deleteFirebaseDocument('transactions', txId);
 
     if (loggedInAdmin) {
       addLog(loggedInAdmin.name, loggedInAdmin.role, 'Hapus Transaksi', `Menghapus transaksi ${txToDelete.type} ${txToDelete.accountType} sebesar Rp${txToDelete.amount} untuk santri ${txToDelete.santriName}`);
+    }
+  };
+
+  const handleUpdateTransaction = (updatedTx: Transaction) => {
+    const nextTxs = transactions.map(t => t.id === updatedTx.id ? updatedTx : t);
+    setTransactions(nextTxs);
+    localStorage.setItem('esangu_transactions', JSON.stringify(nextTxs));
+    saveFirebaseData({ transactions: [updatedTx] });
+
+    if (loggedInAdmin) {
+      addLog(loggedInAdmin.name, loggedInAdmin.role, 'Edit Transaksi', `Memperbarui data mutasi kas transaksi santri ${updatedTx.santriName} (${updatedTx.type} Rp${updatedTx.amount.toLocaleString('id-ID')})`);
     }
   };
 
@@ -423,7 +432,6 @@ export default function App() {
     const reg = registrations.find(r => r.id === regId);
     if (!reg) return;
 
-    // Create new santri
     const newS: Santri = {
       id: 's_' + Date.now().toString(),
       nis: nis,
@@ -442,14 +450,13 @@ export default function App() {
     saveFirebaseData({ santri: [newS], registrations: updatedRegs.filter(r => r.id === regId) });
     if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Konfirmasi Pendaftaran', `Menerima santri baru: ${newS.name} (${newS.nis})`);
 
-    // WhatsApp logic
     if (sendWa && reg.guardianPhone && reg.guardianPhone !== '-') {
       let text = '';
       const portalUrl = window.location.origin;
-      const template = institution.waTemplateAccountData || institution.waTemplateRegistration || `*E-SANGU SANTRI*\nSistem Tabungan dan Penitipan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}`;
+      const template = institution?.waTemplateAccountData || institution?.waTemplateRegistration || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}`;
       
       text = template
-        .replace(/{NAMA PONDOK}/g, institution.name)
+        .replace(/{NAMA PONDOK}/g, institution?.name || '')
         .replace(/{NIS}/g, nis)
         .replace(/{NAMA}/g, reg.name)
         .replace(/{KELAS}/g, reg.className)
@@ -502,7 +509,6 @@ export default function App() {
   };
 
   const handleRestoreData = async (restoredState: any) => {
-    // Reload components states
     const db = await getFirebaseData();
     setStudents(db.santri);
     setTransactions(db.transactions);
@@ -527,7 +533,7 @@ export default function App() {
       localStorage.setItem('esangu_factory_default', JSON.stringify(fullState));
       
       const { doc, setDoc } = await import('firebase/firestore');
-      const { db } = await import('./lib/firebase');
+      const { db } = await import('./services/firebase');
       await setDoc(doc(db, 'settings', 'factory_template'), cleanUndefined({
         santri: students,
         transactions: transactions,
@@ -547,7 +553,6 @@ export default function App() {
 
   const handleRestoreFactoryDefault = async () => {
     try {
-      // 1. Delete all current records in Firestore to avoid orphaned records
       for (const s of students) {
         await deleteFirebaseDocument('santri', s.id);
       }
@@ -564,25 +569,22 @@ export default function App() {
         await deleteFirebaseDocument('users', u.id);
       }
 
-      // Also clean up settings/factory_template from Firestore if it exists
       const { doc, deleteDoc } = await import('firebase/firestore');
-      const { db } = await import('./lib/firebase');
+      const { db } = await import('./services/firebase');
       try {
         await deleteDoc(doc(db, 'settings', 'factory_template'));
       } catch (err) {
         console.warn("Could not delete factory_template doc:", err);
       }
 
-      // Clean default sterile baseline
       const targetSantri: Santri[] = [];
       const targetTransactions: Transaction[] = [];
       const targetInstitution = DEFAULT_INSTITUTION_SETTINGS;
       const targetFinancial = DEFAULT_FINANCIAL_SETTINGS;
-      const targetUsers = DEFAULT_USERS; // contains exactly manajer, admin, bendahara
+      const targetUsers = DEFAULT_USERS;
       const targetRegistrations: PendingRegistration[] = [];
       const targetActivityLogs: any[] = [];
 
-      // 2. Write the selected target data back to Firebase
       await saveFirebaseData({
         institution: targetInstitution,
         financial: targetFinancial,
@@ -593,7 +595,6 @@ export default function App() {
         activityLogs: targetActivityLogs
       });
 
-      // 3. Save to LocalStorage
       localStorage.setItem('esangu_santri', JSON.stringify(targetSantri));
       localStorage.setItem('esangu_transactions', JSON.stringify(targetTransactions));
       localStorage.setItem('esangu_institution', JSON.stringify(targetInstitution));
@@ -602,10 +603,7 @@ export default function App() {
       localStorage.setItem('esangu_registrations', JSON.stringify(targetRegistrations));
       localStorage.setItem('esangu_activityLogs', JSON.stringify(targetActivityLogs));
       localStorage.removeItem('esangu_factory_default');
-      localStorage.removeItem('esangu_factory_backup');
-      localStorage.removeItem('esangu_custom_factory_saved');
 
-      // 4. Update React states
       setStudents(targetSantri);
       setTransactions(targetTransactions);
       setInstitution(targetInstitution);
@@ -621,44 +619,8 @@ export default function App() {
     }
   };
 
-  // Admin login handler
-  const handleAdminLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!adminUsername || !adminPassword) {
-      alert('Mohon masukkan username dan password!');
-      return;
-    }
-
-    const targetUsername = (adminUsername || '').trim().toLowerCase();
-    const foundUser = users.find(u => (u.username || '').toLowerCase() === targetUsername);
-    
-    if (foundUser) {
-      if (foundUser.isActive === false) {
-        alert('Akun Anda dinonaktifkan. Silakan hubungi Master.');
-        return;
-      }
-      
-      const isPasswordCorrect = foundUser.password 
-        ? adminPassword === foundUser.password 
-        : (adminPassword === foundUser.username || adminPassword === 'admin123');
-
-      if (isPasswordCorrect) {
-        setLoggedInAdmin(foundUser);
-        setShowAdminLoginModal(false);
-        setCurrentView('admin');
-        setAdminUsername('');
-        setAdminPassword('');
-      } else {
-        alert('Password salah!');
-      }
-    } else {
-      alert('Username tidak terdaftar!');
-    }
-  };
-
   const handleAdminLogout = () => {
     setLoggedInAdmin(null);
-    setCurrentView('portal');
   };
 
   if (!institution || !financial) {
@@ -672,133 +634,179 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 relative overflow-hidden font-sans text-emerald-950">
-      {/* Background Mesh Orbs */}
-      <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-emerald-200/40 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-200/20 rounded-full blur-[120px] pointer-events-none"></div>
+  const commonProps = {
+    students,
+    transactions,
+    institution,
+    financial,
+    onAdminLoginClick: () => setShowAdminLoginModal(true),
+    onRegister: handleAddRegistration,
+    registrations
+  };
 
-      <div className="relative z-10 min-h-screen flex flex-col justify-between">
-        {/* Route Switcher Panel */}
-        {currentView === 'portal' ? (
-          <ErrorBoundary fallbackTitle="Portal Wali Santri Mengalami Gangguan" onReset={() => window.location.reload()}>
-            <GuardianPortal
-              students={students}
-              transactions={transactions}
-              institution={institution}
-              financial={financial}
-              onAdminLoginClick={() => setShowAdminLoginModal(true)}
-              onRegister={handleAddRegistration}
-              registrations={registrations}
-            />
-          </ErrorBoundary>
-        ) : (
-          loggedInAdmin && (
-            <ErrorBoundary fallbackTitle="Panel Administrasi Mengalami Gangguan" onReset={() => setCurrentView('portal')}>
-              <AdminPanel
-                students={students}
-                transactions={transactions}
-                institution={institution}
-                financial={financial}
-                users={users}
-                registrations={registrations}
-                activityLogs={activityLogs}
-                currentUser={loggedInAdmin}
-                onLogout={handleAdminLogout}
-                onAddStudent={handleAddStudent}
-                onAddStudents={handleAddStudents}
-                onEditStudent={handleEditStudent}
-                onDeleteStudent={handleDeleteStudent}
-                onBulkDeleteStudents={handleBulkDeleteStudents}
-                onAddTransaction={handleAddTransaction}
-                onAddTransactions={handleAddTransactions}
-                onDeleteTransaction={handleDeleteTransaction}
-                onSaveInstitution={handleSaveInstitution}
-                onSaveFinancial={handleSaveFinancial}
-                onAddUser={handleAddUser}
-                onEditUser={handleEditUser}
-                onDeleteUser={handleDeleteUser}
-                onRestoreData={handleRestoreData}
-                onSaveFactoryDefault={handleSaveFactoryDefault}
-                onRestoreFactoryDefault={handleRestoreFactoryDefault}
-                onConfirmRegistration={handleConfirmRegistration}
-                onRejectRegistration={handleRejectRegistration}
-                onConfirmDeposit={handleConfirmDeposit}
-                onDeleteRegistration={handleDeleteRegistration}
-                onActivateSavings={handleActivateSavings}
-                onDeactivateSavings={handleDeactivateSavings}
-                onBulkDeactivateSavings={handleBulkDeactivateSavings}
-                onBulkActivateSavings={handleBulkActivateSavings}
-              />
-            </ErrorBoundary>
-          )
-        )}
-      </div>
+  const adminProps = {
+    students,
+    transactions,
+    institution,
+    financial,
+    users,
+    registrations,
+    activityLogs,
+    currentUser: loggedInAdmin!,
+    onLogout: handleAdminLogout,
+    onAddStudent: handleAddStudent,
+    onAddStudents: handleAddStudents,
+    onEditStudent: handleEditStudent,
+    onDeleteStudent: handleDeleteStudent,
+    onBulkDeleteStudents: handleBulkDeleteStudents,
+    onAddTransaction: handleAddTransaction,
+    onAddTransactions: handleAddTransactions,
+    onDeleteTransaction: handleDeleteTransaction,
+    onUpdateTransaction: handleUpdateTransaction,
+    onSaveInstitution: handleSaveInstitution,
+    onSaveFinancial: handleSaveFinancial,
+    onAddUser: handleAddUser,
+    onEditUser: handleEditUser,
+    onDeleteUser: handleDeleteUser,
+    onRestoreData: handleRestoreData,
+    onSaveFactoryDefault: handleSaveFactoryDefault,
+    onRestoreFactoryDefault: handleRestoreFactoryDefault,
+    onConfirmRegistration: handleConfirmRegistration,
+    onRejectRegistration: handleRejectRegistration,
+    onConfirmDeposit: handleConfirmDeposit,
+    onDeleteRegistration: handleDeleteRegistration,
+    onActivateSavings: handleActivateSavings,
+    onDeactivateSavings: handleDeactivateSavings,
+    onBulkDeactivateSavings: handleBulkDeactivateSavings,
+    onBulkActivateSavings: handleBulkActivateSavings
+  };
 
-      <Login 
-        isOpen={showAdminLoginModal}
-        onClose={() => setShowAdminLoginModal(false)}
-        logoUrl={institution.logoUrl}
-        onLogin={(u, p) => {
-          // Wrap login logic in a way that handles state
-          setAdminUsername(u);
-          setAdminPassword(p);
-          // Trigger the form submit logic - we can just call the handler manually
-          const targetU = (u || '').trim().toLowerCase();
-          const foundUser = users.find(usr => (usr.username || '').toLowerCase() === targetU);
-          if (foundUser && foundUser.isActive !== false) {
-            const isPasswordCorrect = foundUser.password 
-              ? p === foundUser.password 
-              : (p === foundUser.username || p === 'admin123');
-
-            if (isPasswordCorrect) {
-              setLoggedInAdmin(foundUser);
-              setShowAdminLoginModal(false);
-              setCurrentView('admin');
-              setAdminUsername('');
-              setAdminPassword('');
-              return true;
-            }
-          }
-          return false;
-        }}
-      />
-
-      {/* Offline Indicator */}
-      <OfflineIndicator />
-
-      {globalAlert && (
-        <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-250">
-          <div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300 relative overflow-hidden">
-            {/* Top decorative badge */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600" />
-            
-            {/* Warning/Notification Icon */}
-            <div className="mx-auto w-12 h-12 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center border border-emerald-100/50">
-              <ShieldAlert className="w-6 h-6" />
+  const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    if (!loggedInAdmin) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-emerald-100 text-center space-y-4">
+            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl mx-auto flex items-center justify-center border border-amber-100">
+              <ShieldAlert className="w-7 h-7" />
             </div>
-            
-            {/* Text content */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest">Pemberitahuan Sistem</h3>
-              <p className="text-xs text-gray-600 font-bold leading-relaxed whitespace-pre-line text-left">
-                {globalAlert}
-              </p>
-            </div>
-            
-            {/* Dismiss Action Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setGlobalAlert(null)}
-                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
-              >
-                Mengerti & Tutup
-              </button>
-            </div>
+            <h2 className="text-sm font-black text-emerald-950 uppercase tracking-wider">Akses Terbatas</h2>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Anda harus masuk sebagai Admin / Kasir untuk membuka halaman administrasi back-office.
+            </p>
+            <button
+              onClick={() => setShowAdminLoginModal(true)}
+              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
+            >
+              Buka Login Admin
+            </button>
           </div>
         </div>
-      )}
-    </div>
+      );
+    }
+    return <>{children}</>;
+  };
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 relative overflow-hidden font-sans text-emerald-950">
+        <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-emerald-200/40 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-200/20 rounded-full blur-[120px] pointer-events-none" />
+
+        <div className="relative z-10 min-h-screen flex flex-col justify-between">
+          <ErrorBoundary fallbackTitle="Aplikasi Mengalami Gangguan" onReset={() => window.location.reload()}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Navigate to="/portal" replace />} />
+              <Route path="/portal" element={<PortalPage {...commonProps} />} />
+              <Route path="/cek" element={<ManualCheckPage {...commonProps} />} />
+              <Route path="/cek/:nis" element={<SantriDetailPage {...commonProps} />} />
+              <Route path="/login" element={<LoginPage isOpen={true} onClose={() => {}} logoUrl={institution.logoUrl} onLogin={(u, p) => {
+                const targetU = (u || '').trim().toLowerCase();
+                const foundUser = users.find(usr => (usr.username || '').toLowerCase() === targetU);
+                if (foundUser && foundUser.isActive !== false) {
+                  const isPasswordCorrect = foundUser.password ? p === foundUser.password : (p === foundUser.username || p === 'admin123');
+                  if (isPasswordCorrect) {
+                    setLoggedInAdmin(foundUser);
+                    return true;
+                  }
+                }
+                return false;
+              }} />} />
+
+              {/* Admin Routes */}
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminGuard><DashboardPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/master/santri" element={<AdminGuard><StudentsPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/master/pengguna" element={<AdminGuard><UsersPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/transaksi" element={<AdminGuard><TransactionsPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/mutasi" element={<AdminGuard><MutasiPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/tabungan" element={<AdminGuard><SavingsPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/pendaftaran" element={<AdminGuard><RegistrationsPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/impor" element={<AdminGuard><ImportPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/qr" element={<AdminGuard><QrPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/backup-restore" element={<AdminGuard><BackupPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/log-aktifitas" element={<AdminGuard><LogsPage {...adminProps} /></AdminGuard>} />
+              <Route path="/admin/pengaturan" element={<AdminGuard><SettingsPage {...adminProps} /></AdminGuard>} />
+
+              {/* Fallback Catch-all Route */}
+              <Route path="*" element={<Navigate to="/portal" replace />} />
+            </Routes>
+          </ErrorBoundary>
+        </div>
+
+        {/* Global Login Modal */}
+        <Login 
+          isOpen={showAdminLoginModal}
+          onClose={() => setShowAdminLoginModal(false)}
+          logoUrl={institution.logoUrl}
+          onLogin={(u, p) => {
+            const targetU = (u || '').trim().toLowerCase();
+            const foundUser = users.find(usr => (usr.username || '').toLowerCase() === targetU);
+            if (foundUser && foundUser.isActive !== false) {
+              const isPasswordCorrect = foundUser.password 
+                ? p === foundUser.password 
+                : (p === foundUser.username || p === 'admin123');
+
+              if (isPasswordCorrect) {
+                setLoggedInAdmin(foundUser);
+                setShowAdminLoginModal(false);
+                return true;
+              }
+            }
+            return false;
+          }}
+        />
+
+        {/* Offline Indicator */}
+        <OfflineIndicator />
+
+        {/* Global Alert Notification */}
+        {globalAlert && (
+          <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-250">
+            <div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300 relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600" />
+              <div className="mx-auto w-12 h-12 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center border border-emerald-100/50">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest">Pemberitahuan Sistem</h3>
+                <p className="text-xs text-gray-600 font-bold leading-relaxed whitespace-pre-line text-left">
+                  {globalAlert}
+                </p>
+              </div>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setGlobalAlert(null)}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
+                >
+                  Mengerti & Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </BrowserRouter>
   );
 }

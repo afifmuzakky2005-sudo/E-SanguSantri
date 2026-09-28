@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { usePWAInstall } from '../lib/usePWAInstall';
+import { usePWAInstall } from '../../lib/usePWAInstall';
 import { Download, Share, PlusSquare, X, Smartphone, Sparkles, CheckCircle2 } from 'lucide-react';
 
 interface PWAInstallProps {
