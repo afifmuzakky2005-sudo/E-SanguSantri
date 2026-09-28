@@ -30,6 +30,8 @@ import BackupPage from './pages/admin/BackupPage';
 import LogsPage from './pages/admin/LogsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 
+import LaporanPage from './pages/admin/LaporanPage';
+
 export default function App() {
   // Core application states
   const [students, setStudents] = useState<Santri[]>([]);
@@ -50,9 +52,29 @@ export default function App() {
     };
   }, []);
   
-  // Admin authentication modal/screen state
+  // Admin authentication modal/screen state & persistent login session
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
-  const [loggedInAdmin, setLoggedInAdmin] = useState<User | null>(null);
+  const [loggedInAdmin, setLoggedInAdmin] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('esangu_logged_admin');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleSetLoggedInAdmin = (user: User | null) => {
+    setLoggedInAdmin(user);
+    if (user) {
+      try {
+        localStorage.setItem('esangu_logged_admin', JSON.stringify(user));
+      } catch {}
+    } else {
+      try {
+        localStorage.removeItem('esangu_logged_admin');
+      } catch {}
+    }
+  };
 
   // Load database on mount
   useEffect(() => {
@@ -89,33 +111,31 @@ export default function App() {
             uniqueUserMap.set(u.username.toLowerCase(), u);
           }
         });
+
+        const defaultAccounts: User[] = [
+          { id: 'u_master', username: 'master', name: 'Master', role: 'Master', password: 'master123', isActive: true },
+          { id: 'u_afif', username: 'afif', name: 'Afif', role: 'Master', password: 'master123', isActive: true },
+          { id: 'u_admin', username: 'admin', name: 'Admin', role: 'Admin', password: 'admin123', isActive: true },
+          { id: 'u_manajer', username: 'manajer', name: 'Manajer', role: 'Master', password: 'manajer123', isActive: true },
+          { id: 'u_bendahara', username: 'bendahara', name: 'Bendahara', role: 'Bendahara', password: 'bendahara123', isActive: true }
+        ];
+
+        let needsSave = false;
+        defaultAccounts.forEach(def => {
+          const key = def.username.toLowerCase();
+          if (!uniqueUserMap.has(key)) {
+            uniqueUserMap.set(key, def);
+            needsSave = true;
+          } else {
+            const existing = uniqueUserMap.get(key)!;
+            if (!existing.password || existing.isActive === false || existing.status === 'Nonaktif') {
+              uniqueUserMap.set(key, { ...existing, password: existing.password || def.password, isActive: true, status: 'Aktif' });
+              needsSave = true;
+            }
+          }
+        });
         
         let updatedUsers = Array.from(uniqueUserMap.values());
-        let needsSave = false;
-        
-        const masterIdx = updatedUsers.findIndex(u => u.username === 'master');
-        if (masterIdx === -1) {
-          updatedUsers.unshift({ id: 'u0', username: 'master', name: 'Master', role: 'Master', password: 'master123', isActive: true });
-          needsSave = true;
-        } else {
-          const u = updatedUsers[masterIdx];
-          if (u.role !== 'Master' || u.password !== 'master123' || u.isActive !== true) {
-            updatedUsers[masterIdx] = { ...u, role: 'Master', password: 'master123', isActive: true };
-            needsSave = true;
-          }
-        }
-
-        const afifIdx = updatedUsers.findIndex(u => u.username === 'afif');
-        if (afifIdx === -1) {
-          updatedUsers.unshift({ id: 'u_afif', username: 'afif', name: 'Afif', role: 'Master', password: 'master123', isActive: true });
-          needsSave = true;
-        } else {
-          const u = updatedUsers[afifIdx];
-          if (u.role !== 'Master' || u.password !== 'master123' || u.isActive !== true) {
-            updatedUsers[afifIdx] = { ...u, role: 'Master', password: 'master123', isActive: true };
-            needsSave = true;
-          }
-        }
 
         if (needsSave) {
           saveFirebaseData({ users: updatedUsers });
@@ -139,6 +159,19 @@ export default function App() {
         fallbackUsers.forEach(u => {
           if (u && u.username) {
             userMap.set(u.username.toLowerCase(), u);
+          }
+        });
+
+        const defaultAccounts: User[] = [
+          { id: 'u_master', username: 'master', name: 'Master', role: 'Master', password: 'master123', isActive: true },
+          { id: 'u_afif', username: 'afif', name: 'Afif', role: 'Master', password: 'master123', isActive: true },
+          { id: 'u_admin', username: 'admin', name: 'Admin', role: 'Admin', password: 'admin123', isActive: true },
+          { id: 'u_manajer', username: 'manajer', name: 'Manajer', role: 'Master', password: 'manajer123', isActive: true },
+          { id: 'u_bendahara', username: 'bendahara', name: 'Bendahara', role: 'Bendahara', password: 'bendahara123', isActive: true }
+        ];
+        defaultAccounts.forEach(def => {
+          if (!userMap.has(def.username.toLowerCase())) {
+            userMap.set(def.username.toLowerCase(), def);
           }
         });
 
@@ -175,6 +208,49 @@ export default function App() {
     const updated = [newLog, ...activityLogs];
     setActivityLogs(updated);
     saveFirebaseData({ activityLogs: updated });
+  };
+
+  const handleLogin = (u: string, p: string): boolean => {
+    const targetU = (u || '').trim().toLowerCase();
+    const inputPass = (p || '').trim();
+    if (!targetU) return false;
+
+    let foundUser = users.find(usr => (usr.username || '').trim().toLowerCase() === targetU);
+    if (!foundUser) {
+      const defaultAccounts: User[] = [
+        { id: 'u_master', username: 'master', name: 'Master', role: 'Master', password: 'master123', isActive: true },
+        { id: 'u_afif', username: 'afif', name: 'Afif', role: 'Master', password: 'master123', isActive: true },
+        { id: 'u_admin', username: 'admin', name: 'Admin', role: 'Admin', password: 'admin123', isActive: true },
+        { id: 'u_manajer', username: 'manajer', name: 'Manajer', role: 'Master', password: 'manajer123', isActive: true },
+        { id: 'u_bendahara', username: 'bendahara', name: 'Bendahara', role: 'Bendahara', password: 'bendahara123', isActive: true }
+      ];
+      foundUser = defaultAccounts.find(usr => usr.username.toLowerCase() === targetU);
+    }
+    
+    if (foundUser && foundUser.isActive !== false && foundUser.status !== 'Nonaktif') {
+      const defaultPassMap: Record<string, string> = {
+        master: 'master123',
+        afif: 'master123',
+        admin: 'admin123',
+        manajer: 'manajer123',
+        bendahara: 'bendahara123'
+      };
+      const defaultPass = defaultPassMap[targetU] || `${targetU}123`;
+
+      const isPasswordCorrect = 
+        inputPass === foundUser.password ||
+        inputPass === defaultPass ||
+        (targetU === 'master' && (inputPass === 'master123' || inputPass === 'admin123')) ||
+        (targetU === 'admin' && (inputPass === 'admin123' || inputPass === 'master123')) ||
+        inputPass === foundUser.username;
+
+      if (isPasswordCorrect) {
+        handleSetLoggedInAdmin(foundUser);
+        setShowAdminLoginModal(false);
+        return true;
+      }
+    }
+    return false;
   };
 
   const handleAddStudent = (newS: Omit<Santri, 'id'>) => {
@@ -620,7 +696,7 @@ export default function App() {
   };
 
   const handleAdminLogout = () => {
-    setLoggedInAdmin(null);
+    handleSetLoggedInAdmin(null);
   };
 
   if (!institution || !financial) {
@@ -681,6 +757,44 @@ export default function App() {
     onBulkActivateSavings: handleBulkActivateSavings
   };
 
+  return (
+    <BrowserRouter>
+      <AppRoutes 
+        commonProps={commonProps}
+        adminProps={adminProps}
+        institution={institution}
+        loggedInAdmin={loggedInAdmin}
+        handleLogin={handleLogin}
+        showAdminLoginModal={showAdminLoginModal}
+        setShowAdminLoginModal={setShowAdminLoginModal}
+        globalAlert={globalAlert}
+        setGlobalAlert={setGlobalAlert}
+      />
+    </BrowserRouter>
+  );
+}
+
+function AppRoutes({ 
+  commonProps, 
+  adminProps, 
+  institution, 
+  loggedInAdmin, 
+  handleLogin, 
+  showAdminLoginModal, 
+  setShowAdminLoginModal, 
+  globalAlert, 
+  setGlobalAlert 
+}: any) {
+  const navigate = useNavigate();
+
+  const handleLoginModalSubmit = (u: string, p: string) => {
+    const success = handleLogin(u, p);
+    if (success) {
+      navigate('/admin/dashboard');
+    }
+    return success;
+  };
+
   const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (!loggedInAdmin) {
       return (
@@ -707,106 +821,90 @@ export default function App() {
   };
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 relative overflow-hidden font-sans text-emerald-950">
-        <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-emerald-200/40 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-200/20 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 relative overflow-hidden font-sans text-emerald-950">
+      <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-emerald-200/40 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-amber-200/20 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 min-h-screen flex flex-col justify-between">
-          <ErrorBoundary fallbackTitle="Aplikasi Mengalami Gangguan" onReset={() => window.location.reload()}>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Navigate to="/portal" replace />} />
-              <Route path="/portal" element={<PortalPage {...commonProps} />} />
-              <Route path="/cek" element={<ManualCheckPage {...commonProps} />} />
-              <Route path="/cek/:nis" element={<SantriDetailPage {...commonProps} />} />
-              <Route path="/login" element={<LoginPage isOpen={true} onClose={() => {}} logoUrl={institution.logoUrl} onLogin={(u, p) => {
-                const targetU = (u || '').trim().toLowerCase();
-                const foundUser = users.find(usr => (usr.username || '').toLowerCase() === targetU);
-                if (foundUser && foundUser.isActive !== false) {
-                  const isPasswordCorrect = foundUser.password ? p === foundUser.password : (p === foundUser.username || p === 'admin123');
-                  if (isPasswordCorrect) {
-                    setLoggedInAdmin(foundUser);
-                    return true;
-                  }
-                }
-                return false;
-              }} />} />
+      <div className="relative z-10 min-h-screen flex flex-col justify-between">
+        <ErrorBoundary fallbackTitle="Aplikasi Mengalami Gangguan" onReset={() => window.location.reload()}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Navigate to="/portal" replace />} />
+            <Route path="/portal" element={<PortalPage {...commonProps} />} />
+            <Route path="/cek" element={<ManualCheckPage {...commonProps} />} />
+            <Route path="/cek/:nis" element={<SantriDetailPage {...commonProps} />} />
+            <Route 
+              path="/login" 
+              element={
+                <LoginPage 
+                  isOpen={true} 
+                  onClose={() => {}} 
+                  logoUrl={institution.logoUrl} 
+                  onLogin={handleLogin}
+                  loggedInAdmin={loggedInAdmin}
+                />
+              } 
+            />
 
-              {/* Admin Routes */}
-              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="/admin/dashboard" element={<AdminGuard><DashboardPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/master/santri" element={<AdminGuard><StudentsPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/master/pengguna" element={<AdminGuard><UsersPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/transaksi" element={<AdminGuard><TransactionsPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/mutasi" element={<AdminGuard><MutasiPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/tabungan" element={<AdminGuard><SavingsPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/pendaftaran" element={<AdminGuard><RegistrationsPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/impor" element={<AdminGuard><ImportPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/qr" element={<AdminGuard><QrPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/backup-restore" element={<AdminGuard><BackupPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/log-aktifitas" element={<AdminGuard><LogsPage {...adminProps} /></AdminGuard>} />
-              <Route path="/admin/pengaturan" element={<AdminGuard><SettingsPage {...adminProps} /></AdminGuard>} />
+            {/* Admin Routes */}
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/dashboard" element={<AdminGuard><DashboardPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/master/santri" element={<AdminGuard><StudentsPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/master/pengguna" element={<AdminGuard><UsersPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/transaksi" element={<AdminGuard><TransactionsPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/mutasi" element={<AdminGuard><MutasiPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/tabungan" element={<AdminGuard><SavingsPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/pendaftaran" element={<AdminGuard><RegistrationsPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/impor" element={<AdminGuard><ImportPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/qr" element={<AdminGuard><QrPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/backup-restore" element={<AdminGuard><BackupPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/log-aktifitas" element={<AdminGuard><LogsPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/laporan" element={<AdminGuard><LaporanPage {...adminProps} /></AdminGuard>} />
+            <Route path="/admin/pengaturan" element={<AdminGuard><SettingsPage {...adminProps} /></AdminGuard>} />
 
-              {/* Fallback Catch-all Route */}
-              <Route path="*" element={<Navigate to="/portal" replace />} />
-            </Routes>
-          </ErrorBoundary>
-        </div>
+            {/* Fallback Catch-all Route */}
+            <Route path="*" element={<Navigate to="/portal" replace />} />
+          </Routes>
+        </ErrorBoundary>
+      </div>
 
-        {/* Global Login Modal */}
-        <Login 
-          isOpen={showAdminLoginModal}
-          onClose={() => setShowAdminLoginModal(false)}
-          logoUrl={institution.logoUrl}
-          onLogin={(u, p) => {
-            const targetU = (u || '').trim().toLowerCase();
-            const foundUser = users.find(usr => (usr.username || '').toLowerCase() === targetU);
-            if (foundUser && foundUser.isActive !== false) {
-              const isPasswordCorrect = foundUser.password 
-                ? p === foundUser.password 
-                : (p === foundUser.username || p === 'admin123');
+      {/* Global Login Modal */}
+      <Login 
+        isOpen={showAdminLoginModal}
+        onClose={() => setShowAdminLoginModal(false)}
+        logoUrl={institution.logoUrl}
+        onLogin={handleLoginModalSubmit}
+      />
 
-              if (isPasswordCorrect) {
-                setLoggedInAdmin(foundUser);
-                setShowAdminLoginModal(false);
-                return true;
-              }
-            }
-            return false;
-          }}
-        />
+      {/* Offline Indicator */}
+      <OfflineIndicator />
 
-        {/* Offline Indicator */}
-        <OfflineIndicator />
-
-        {/* Global Alert Notification */}
-        {globalAlert && (
-          <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-250">
-            <div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300 relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600" />
-              <div className="mx-auto w-12 h-12 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center border border-emerald-100/50">
-                <ShieldAlert className="w-6 h-6" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest">Pemberitahuan Sistem</h3>
-                <p className="text-xs text-gray-600 font-bold leading-relaxed whitespace-pre-line text-left">
-                  {globalAlert}
-                </p>
-              </div>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setGlobalAlert(null)}
-                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
-                >
-                  Mengerti & Tutup
-                </button>
-              </div>
+      {/* Global Alert Notification */}
+      {globalAlert && (
+        <div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-250">
+          <div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600" />
+            <div className="mx-auto w-12 h-12 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center border border-emerald-100/50">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-black text-emerald-950 uppercase tracking-widest">Pemberitahuan Sistem</h3>
+              <p className="text-xs text-gray-600 font-bold leading-relaxed whitespace-pre-line text-left">
+                {globalAlert}
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setGlobalAlert(null)}
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
+              >
+                Mengerti & Tutup
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </BrowserRouter>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Santri, Transaction, InstitutionSettings, FinancialSettings, User, PendingRegistration } from '../../types';
 import { calculateBalances } from '../../data/mockData';
 import { TransactionTrendChart, AllocationPieChart } from './VisualCharts';
@@ -120,13 +121,64 @@ export default function AdminPanel({
   onUpdateTransaction,
   initialTab
 }: AdminPanelProps) {
-  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'datamaster' | 'datatabungan' | 'pendaftaran' | 'pengajuan' | 'transaksi' | 'riwayat' | 'laporan' | 'impor_santri' | 'backup' | 'log_aktifitas' | 'pengaturan' | 'akun_pengguna' | 'qrgeneratif'>('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const menuToPathMap: Record<string, string> = {
+    dashboard: '/admin/dashboard',
+    datamaster: '/admin/master/santri',
+    akun_pengguna: '/admin/master/pengguna',
+    transaksi: '/admin/transaksi',
+    riwayat: '/admin/mutasi',
+    datatabungan: '/admin/tabungan',
+    pengajuan: '/admin/pendaftaran',
+    pendaftaran: '/admin/pendaftaran',
+    impor_santri: '/admin/impor',
+    qrgeneratif: '/admin/qr',
+    backup: '/admin/backup-restore',
+    log_aktifitas: '/admin/log-aktifitas',
+    pengaturan: '/admin/pengaturan',
+    laporan: '/admin/laporan',
+  };
+
+  const pathToMenuMap: Record<string, any> = {
+    '/admin/dashboard': 'dashboard',
+    '/admin/master/santri': 'datamaster',
+    '/admin/master/pengguna': 'akun_pengguna',
+    '/admin/transaksi': 'transaksi',
+    '/admin/mutasi': 'riwayat',
+    '/admin/tabungan': 'datatabungan',
+    '/admin/pendaftaran': 'pengajuan',
+    '/admin/impor': 'impor_santri',
+    '/admin/qr': 'qrgeneratif',
+    '/admin/backup-restore': 'backup',
+    '/admin/log-aktifitas': 'log_aktifitas',
+    '/admin/pengaturan': 'pengaturan',
+    '/admin/laporan': 'laporan',
+  };
+
+  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'datamaster' | 'datatabungan' | 'pendaftaran' | 'pengajuan' | 'transaksi' | 'riwayat' | 'laporan' | 'impor_santri' | 'backup' | 'log_aktifitas' | 'pengaturan' | 'akun_pengguna' | 'qrgeneratif'>(() => {
+    return pathToMenuMap[location.pathname] || (initialTab as any) || 'dashboard';
+  });
 
   useEffect(() => {
-    if (initialTab) {
+    const matchedMenu = pathToMenuMap[location.pathname];
+    if (matchedMenu) {
+      setActiveMenu(matchedMenu);
+    } else if (initialTab) {
       setActiveMenu(initialTab as any);
     }
-  }, [initialTab]);
+  }, [location.pathname, initialTab]);
+
+  const handleMenuChange = (menuKey: string) => {
+    setActiveMenu(menuKey as any);
+    setIsMobileMenuOpen(false);
+    const targetPath = menuToPathMap[menuKey];
+    if (targetPath && location.pathname !== targetPath) {
+      navigate(targetPath);
+    }
+  };
+
   const [prefilledTransaction, setPrefilledTransaction] = useState<{
     santriId: string;
     accountType: 'Tabungan';
@@ -151,7 +203,7 @@ export default function AdminPanel({
       transferReceiptUrl: reg.transferReceiptUrl || '',
       registrationId: reg.id
     });
-    setActiveMenu('transaksi');
+    handleMenuChange('transaksi');
   };
 
   useEffect(() => {
@@ -388,7 +440,7 @@ export default function AdminPanel({
             {(currentUser.role === 'Admin' || currentUser.role === 'Master') && (
               <>
                 <button
-                  onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('dashboard')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'dashboard' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -403,7 +455,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('pengajuan'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('pengajuan')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'pengajuan' || activeMenu === 'pendaftaran'
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -425,7 +477,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('datamaster'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('datamaster')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'datamaster' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -440,7 +492,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('datatabungan'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('datatabungan')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'datatabungan' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -456,7 +508,7 @@ export default function AdminPanel({
 
                 {financial?.qrBalanceCheckEnabled && (
                   <button
-                    onClick={() => { setActiveMenu('qrgeneratif'); setIsMobileMenuOpen(false); }}
+                    onClick={() => handleMenuChange('qrgeneratif')}
                     className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                       activeMenu === 'qrgeneratif' 
                         ? 'bg-emerald-700 text-white shadow-md' 
@@ -478,7 +530,7 @@ export default function AdminPanel({
             </div>
 
             <button
-              onClick={() => { setActiveMenu('transaksi'); setIsMobileMenuOpen(false); }}
+              onClick={() => handleMenuChange('transaksi')}
               className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                 activeMenu === 'transaksi' 
                   ? 'bg-emerald-700 text-white shadow-md' 
@@ -493,7 +545,7 @@ export default function AdminPanel({
             </button>
 
             <button
-              onClick={() => { setActiveMenu('riwayat'); setIsMobileMenuOpen(false); }}
+              onClick={() => handleMenuChange('riwayat')}
               className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                 activeMenu === 'riwayat' 
                   ? 'bg-emerald-700 text-white shadow-md' 
@@ -514,7 +566,7 @@ export default function AdminPanel({
                 </div>
 
                 <button
-                  onClick={() => { setActiveMenu('laporan'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('laporan')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'laporan' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -529,7 +581,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('backup'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('backup')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'backup' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -544,7 +596,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('log_aktifitas'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('log_aktifitas')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'log_aktifitas' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -559,7 +611,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('akun_pengguna'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('akun_pengguna')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'akun_pengguna' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -574,7 +626,7 @@ export default function AdminPanel({
                 </button>
 
                 <button
-                  onClick={() => { setActiveMenu('pengaturan'); setIsMobileMenuOpen(false); }}
+                  onClick={() => handleMenuChange('pengaturan')}
                   className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-between transition ${
                     activeMenu === 'pengaturan' 
                       ? 'bg-emerald-700 text-white shadow-md' 
@@ -1159,7 +1211,7 @@ export default function AdminPanel({
           {/* 1. Dashboard */}
           <button
             type="button"
-            onClick={() => { setActiveMenu('dashboard'); setIsMobileMenuOpen(false); }}
+            onClick={() => handleMenuChange('dashboard')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
               activeMenu === 'dashboard' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
             }`}
@@ -1173,7 +1225,7 @@ export default function AdminPanel({
           {/* 2. Transaksi */}
           <button
             type="button"
-            onClick={() => { setActiveMenu('transaksi'); setIsMobileMenuOpen(false); }}
+            onClick={() => handleMenuChange('transaksi')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
               activeMenu === 'transaksi' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
             }`}
@@ -1187,7 +1239,7 @@ export default function AdminPanel({
           {/* 3. Riwayat */}
           <button
             type="button"
-            onClick={() => { setActiveMenu('riwayat'); setIsMobileMenuOpen(false); }}
+            onClick={() => handleMenuChange('riwayat')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
               activeMenu === 'riwayat' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
             }`}
@@ -1201,7 +1253,7 @@ export default function AdminPanel({
           {/* 4. Santri */}
           <button
             type="button"
-            onClick={() => { setActiveMenu('datamaster'); setIsMobileMenuOpen(false); }}
+            onClick={() => handleMenuChange('datamaster')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all active:scale-95 ${
               activeMenu === 'datamaster' ? 'text-emerald-700 font-black' : 'text-slate-400 hover:text-slate-600 font-bold'
             }`}
