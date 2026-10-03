@@ -368,7 +368,7 @@ export default function GuardianPortal({
     <div className="w-full flex-1 flex flex-col justify-between font-sans bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 z-10 relative">
       
       {/* Top Banner Header */}
-      <header className="bg-white/60 backdrop-blur-xl border-b border-emerald-100 shadow-sm text-emerald-950 relative z-10">
+      <header className="bg-white/70 backdrop-blur-xl border-b border-emerald-100 shadow-xs text-emerald-950 relative z-30 pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
         <div className="max-w-6xl mx-auto px-3.5 py-3 md:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/80 text-emerald-900 font-black flex items-center justify-center shadow-md text-base md:text-xl overflow-hidden shrink-0 border border-emerald-100/60">
@@ -393,7 +393,7 @@ export default function GuardianPortal({
             {!loggedInStudent && (
               <button
                 onClick={onAdminLoginClick}
-                className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-900/20 cursor-pointer flex items-center gap-1.5"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-emerald-900/20 cursor-pointer flex items-center gap-1.5 border-none"
               >
                 <KeyRound className="w-3.5 h-3.5 text-yellow-400" />
                 <span className="hidden sm:inline">Login Admin</span>
@@ -414,7 +414,7 @@ export default function GuardianPortal({
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] pr-[calc(1rem+env(safe-area-inset-right,0px))]">
         
         {transitioningStudent ? (
           <div className="flex flex-col items-center justify-center h-[60vh] space-y-8 animate-in zoom-in-95 duration-500">
@@ -1205,7 +1205,7 @@ export default function GuardianPortal({
                     <th className="p-3">Kelas / Asrama</th>
                     <th className="p-3">No. Wali</th>
                     <th className="p-3">Waktu Daftar</th>
-                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3 text-center">Status & Alasan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
@@ -1236,17 +1236,24 @@ export default function GuardianPortal({
                           {formatDateTimeDDMMYYYY(reg.timestamp)}
                         </td>
                         <td className="p-3 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold ${
-                            reg.status === 'Pending' 
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                              : reg.status === 'Confirmed'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                : 'bg-red-100 text-red-800 border border-red-200'
-                          }`}>
-                            {reg.status === 'Pending' && '⏳ Pending'}
-                            {reg.status === 'Confirmed' && '✅ Disetujui'}
-                            {reg.status === 'Rejected' && '❌ Ditolak'}
-                          </span>
+                          <div className="flex flex-col items-center justify-center gap-1">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold ${
+                              reg.status === 'Pending' 
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                                : reg.status === 'Confirmed'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                              {reg.status === 'Pending' && '⏳ Pending'}
+                              {reg.status === 'Confirmed' && '✅ Disetujui'}
+                              {reg.status === 'Rejected' && '❌ Ditolak'}
+                            </span>
+                            {reg.status === 'Rejected' && reg.rejectionReason && (
+                              <div className="mt-0.5 px-2 py-1 bg-red-50 text-red-700 border border-red-200 rounded-lg text-[9px] font-bold max-w-[180px] leading-tight text-center shadow-2xs">
+                                Alasan: "{reg.rejectionReason}"
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))

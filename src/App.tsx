@@ -571,11 +571,12 @@ export default function App() {
     if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Konfirmasi Setoran', `Menyetujui pengajuan setoran dana santri: ${reg.name}`);
   };
 
-  const handleDeleteRegistration = (regId: string) => {
-    const updatedRegs = registrations.filter(r => r.id !== regId);
+  const handleDeleteRegistration = (regId: string | string[]) => {
+    const ids = Array.isArray(regId) ? regId : [regId];
+    const updatedRegs = registrations.filter(r => !ids.includes(r.id));
     setRegistrations(updatedRegs);
-    deleteFirebaseDocument('registrations', regId);
-    if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Hapus Pengajuan', `Menghapus riwayat pengajuan id: ${regId}`);
+    ids.forEach(id => deleteFirebaseDocument('registrations', id));
+    if (loggedInAdmin) addLog(loggedInAdmin.name, loggedInAdmin.role, 'Hapus Pengajuan', `Menghapus ${ids.length} riwayat pengajuan`);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -797,25 +798,7 @@ function AppRoutes({
 
   const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (!loggedInAdmin) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-amber-50/30 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-emerald-100 text-center space-y-4">
-            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl mx-auto flex items-center justify-center border border-amber-100">
-              <ShieldAlert className="w-7 h-7" />
-            </div>
-            <h2 className="text-sm font-black text-emerald-950 uppercase tracking-wider">Akses Terbatas</h2>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Anda harus masuk sebagai Admin / Kasir untuk membuka halaman administrasi back-office.
-            </p>
-            <button
-              onClick={() => setShowAdminLoginModal(true)}
-              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-emerald-900/10 cursor-pointer border-none"
-            >
-              Buka Login Admin
-            </button>
-          </div>
-        </div>
-      );
+      return <Navigate to="/portal" replace />;
     }
     return <>{children}</>;
   };

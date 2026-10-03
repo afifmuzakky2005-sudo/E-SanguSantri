@@ -811,7 +811,8 @@ export default function Settings({
             <code className="text-emerald-700 font-bold font-mono">{"{TANGGAL & WAKTU}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{AKUN DANA}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{KETERANGAN}"}</code>, 
-            <code className="text-emerald-700 font-bold font-mono">{"{NOMINAL}"}</code>
+            <code className="text-emerald-700 font-bold font-mono">{"{NOMINAL}"}</code>, 
+            <code className="text-emerald-700 font-bold font-mono">{"{NAMA WEBSITE}"}</code>
           </p>
           <textarea
             value={instWaTemplateTx}
@@ -850,7 +851,8 @@ export default function Settings({
             <code className="text-emerald-700 font-bold font-mono">{"{KELAS}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{ASRAMA}"}</code>, 
             <code className="text-emerald-700 font-bold font-mono">{"{Saldo Tabungan}"}</code>, 
-            <code className="text-emerald-700 font-bold font-mono">{"{TOTAL SALDO}"}</code>
+            <code className="text-emerald-700 font-bold font-mono">{"{TOTAL SALDO}"}</code>, 
+            <code className="text-emerald-700 font-bold font-mono">{"{NAMA WEBSITE}"}</code>
           </p>
           <textarea
             value={instWaTemplateBalanceSummary}

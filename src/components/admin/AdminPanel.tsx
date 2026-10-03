@@ -76,7 +76,7 @@ interface AdminPanelProps {
   onConfirmRegistration: (regId: string, nis: string, sendWa: boolean) => void;
   onRejectRegistration: (regId: string, reason?: string) => void;
   onConfirmDeposit: (regId: string) => void;
-  onDeleteRegistration?: (regId: string) => void;
+  onDeleteRegistration?: (regId: string | string[]) => void;
   onActivateSavings: (id: string) => void;
   onDeactivateSavings: (id: string) => void;
   onBulkDeactivateSavings?: (ids: string[]) => void;
@@ -670,7 +670,7 @@ export default function AdminPanel({
       <main className="flex-1 flex flex-col h-full md:h-screen overflow-hidden relative">
         
         {/* MOBILE TOP BAR (TETAP & TIDAK BERGERAK) */}
-        <header className="md:hidden shrink-0 sticky top-0 flex items-center justify-between gap-2 px-3.5 py-3 bg-emerald-900 text-white shadow-md z-30 select-none">
+        <header className="md:hidden shrink-0 sticky top-0 flex items-center justify-between gap-2 px-3.5 py-3 pt-safe bg-emerald-900 text-white shadow-md z-30 select-none">
           <div className="flex items-center gap-2.5 min-w-0">
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -916,6 +916,7 @@ export default function AdminPanel({
             onConfirm={onConfirmRegistration}
             onReject={onRejectRegistration}
             onApproveDeposit={handleApproveDepositRequest}
+            onDeleteRegistration={onDeleteRegistration}
           />
         )}
 
@@ -1206,7 +1207,7 @@ export default function AdminPanel({
         {/* MOBILE BOTTOM NAVIGATION BAR (TETAP & TIDAK BERGERAK) */}
         <nav 
           aria-label="Navigasi Cepat Mobile" 
-          className="md:hidden shrink-0 sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-emerald-100/80 flex items-center justify-around py-1.5 px-1 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] select-none"
+          className="md:hidden shrink-0 sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-emerald-100/80 flex items-center justify-around py-1.5 pb-safe px-1 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] select-none"
         >
           {/* 1. Dashboard */}
           <button
@@ -1288,7 +1289,7 @@ export default function AdminPanel({
           </button>
         </nav>
 
-        {showLogoutConfirm && (<div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"><div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300"><div className="mx-auto w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center"><LogOut className="w-6 h-6" /></div><div className="space-y-2"><h3 className="text-lg font-black text-emerald-950 uppercase tracking-tight">Konfirmasi Keluar</h3><p className="text-xs text-gray-500 font-bold">Apakah Anda yakin ingin keluar dari sesi admin?</p></div><div className="flex gap-3"><button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-3 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold rounded-xl text-xs transition-colors border-none cursor-pointer uppercase tracking-wider">Batal</button><button onClick={() => { setShowLogoutConfirm(false); onLogout(); }} className="flex-1 py-3 text-white bg-red-600 hover:bg-red-700 font-bold rounded-xl text-xs transition-colors shadow-md shadow-red-200 border-none cursor-pointer uppercase tracking-wider">Ya, Keluar</button></div></div></div>)}
+        {showLogoutConfirm && (<div className="fixed inset-0 bg-emerald-950/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"><div className="bg-white rounded-[24px] w-full max-w-sm p-6 border border-emerald-100 shadow-2xl space-y-6 text-center transform animate-in zoom-in-95 duration-300"><div className="mx-auto w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center"><LogOut className="w-6 h-6" /></div><div className="space-y-2"><h3 className="text-lg font-black text-emerald-950 uppercase tracking-tight">Konfirmasi Keluar</h3><p className="text-xs text-gray-500 font-bold">Apakah Anda yakin ingin keluar dari sesi admin?</p></div><div className="flex gap-3"><button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-3 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold rounded-xl text-xs transition-colors border-none cursor-pointer uppercase tracking-wider">Batal</button><button onClick={() => { setShowLogoutConfirm(false); onLogout(); navigate('/portal', { replace: true }); }} className="flex-1 py-3 text-white bg-red-600 hover:bg-red-700 font-bold rounded-xl text-xs transition-colors shadow-md shadow-red-200 border-none cursor-pointer uppercase tracking-wider">Ya, Keluar</button></div></div></div>)}
       </main>
 
     </div>

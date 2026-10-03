@@ -487,8 +487,10 @@ export default function SavingsManagement({
 
   const handleSendWaMessage = (student: Santri) => {
     const bal = calculateBalances(student.id, transactions);
-    const template = institution.waTemplateBalanceSummary || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFORMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*TOTAL SALDO* : {TOTAL SALDO}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
+    const template = institution.waTemplateBalanceSummary || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFORMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*TOTAL SALDO* : {TOTAL SALDO}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
     
+    const webUrl = institution?.website || window.location.origin;
+
     const text = template
       .replace(/{NAMA PONDOK}/g, institution.name)
       .replace(/{NAMA}/g, student.name)
@@ -496,8 +498,8 @@ export default function SavingsManagement({
       .replace(/{ASRAMA}/g, student.dorm || '-')
       .replace(/{NIS}/g, student.nis)
       .replace(/{Saldo Tabungan}/g, formatCurrency(bal.tabungan))
-      .replace(/{WEBSITE}/g, window.location.origin)
-      .replace(/{NAMA WEBSITE}/g, window.location.origin)
+      .replace(/{WEBSITE}/g, webUrl)
+      .replace(/{NAMA WEBSITE}/g, webUrl)
       .replace(/{TOTAL SALDO}/g, formatCurrency(bal.tabungan));
     
     const cleanPhone = student.guardianPhone.replace(/\D/g, '');

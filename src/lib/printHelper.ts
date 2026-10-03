@@ -77,7 +77,9 @@ export function parseWaTransactionTemplate(
   
   const buktiText = transaction.type === 'Setor' ? 'BUKTI SETOR DANA' : 'BUKTI PENARIKAN DANA';
 
-  const baseTemplate = template || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan :* {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
+  const baseTemplate = template || `*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan :* {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri`;
+
+  const webUrl = institution?.website || (typeof window !== 'undefined' ? window.location.origin : '');
 
   return baseTemplate
     .replace(/{NAMA PONDOK}/g, institution?.name || '')
@@ -89,7 +91,9 @@ export function parseWaTransactionTemplate(
     .replace(/{TANGGAL & WAKTU}/g, formattedWaktu)
     .replace(/{AKUN DANA}/g, transaction.accountType || '')
     .replace(/{KETERANGAN}/g, transaction.note || '-')
-    .replace(/{NOMINAL}/g, formattedNominal);
+    .replace(/{NOMINAL}/g, formattedNominal)
+    .replace(/{NAMA WEBSITE}/g, webUrl)
+    .replace(/{WEBSITE}/g, webUrl);
 }
 
 export const printReceipt = (transaction: Transaction, santri: Santri, institution: InstitutionSettings, allTransactions: Transaction[] = []) => {

@@ -24,9 +24,9 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
     '3 ALIYAH (B)'
   ],
   waTemplateRegistration: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}",
-  waTemplateTransaction: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan* : {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
+  waTemplateTransaction: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*{BUKTI}*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*ID Transaksi :* {ID_TRANSAKSI}\n*Tanggal & Waktu :* {TANGGAL & WAKTU}\n*Akun Dana* : {AKUN DANA}\n*Keterangan* : {KETERANGAN}\n\n*Nominal : {NOMINAL}*\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
   waTemplateAccountData: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*DATA AKUN SANTRI*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n*Asrama :* {ASRAMA}\n*No Wali :* {NO_WALI}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}",
-  waTemplateBalanceSummary: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFORMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*TOTAL SALDO* : {TOTAL SALDO}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
+  waTemplateBalanceSummary: "*E-SANGU SANTRI*\nSistem Tabungan Uang Santri\n{NAMA PONDOK}\n\n*RINGKASAN INFORMASI SALDO*\n\n*NIS :* {NIS}\n*Nama :* {NAMA}\n*Kelas :* {KELAS}\n\n*Saldo Tabungan :* {Saldo Tabungan}\n*TOTAL SALDO* : {TOTAL SALDO}\n\nSimpan data diatas sebagai akses mengecek Saldo Keuangan santri di website {NAMA WEBSITE}\n______________________\n> Dibuat otomatis oleh Sistem E-Sangu Santri",
   dorms: [
     'Yunusiyah',
     'Ar Ridho 1',
@@ -103,8 +103,11 @@ export function getLocalStorageData() {
   if (!loadedInst.dorms || loadedInst.dorms.length !== DEFAULT_INSTITUTION_SETTINGS.dorms!.length || !loadedInst.dorms.includes('Ar Ridho 1')) {
     loadedInst.dorms = [...DEFAULT_INSTITUTION_SETTINGS.dorms!];
   }
-  if (!loadedInst.waTemplateTransaction) {
+  if (!loadedInst.waTemplateTransaction || !loadedInst.waTemplateTransaction.includes('{NAMA WEBSITE}')) {
     loadedInst.waTemplateTransaction = DEFAULT_INSTITUTION_SETTINGS.waTemplateTransaction;
+  }
+  if (!loadedInst.waTemplateBalanceSummary || !loadedInst.waTemplateBalanceSummary.includes('{NAMA WEBSITE}')) {
+    loadedInst.waTemplateBalanceSummary = DEFAULT_INSTITUTION_SETTINGS.waTemplateBalanceSummary;
   }
   localStorage.setItem('esangu_institution', JSON.stringify(loadedInst));
 
